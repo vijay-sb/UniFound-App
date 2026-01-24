@@ -1,24 +1,17 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:lost_found_app/main.dart';
+// Ensure this matches your pubspec.yaml name
+import 'package:lost_found_app/main.dart'; 
 
 void main() {
   testWidgets('App loads and shows login screen', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    // 2. Ensure 'MyApp' matches the class name in your main.dart
+    // 1. Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
 
-    // Verify that the Login Screen branding is present.
-    expect(find.text('CAMPUS LOST & FOUND'), findsOneWidget);
-    
-    // Verify that the Sign In button exists.
+    // 2. Look for the Sign In button text instead of the header.
+    // Since your UI now uses a logo image, we check for the button text.
     expect(find.text('Sign In'), findsOneWidget);
+
+    // 3. Optional: Verify the email field label exists
+    expect(find.text('University Email'), findsOneWidget);
   });
 }
