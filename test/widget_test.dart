@@ -7,8 +7,8 @@ void main() {
     // 1. Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
 
-    // This tells Flutter to keep ticking the clock until all timers are done
-    await tester.pumpAndSettle();
+    // This handles the Intro Scan without timing out on the Pulse animation.
+    await tester.pump(const Duration(seconds: 5));
 
     // 2. Look for the Sign In button text instead of the header.
     // Since your UI now uses a logo image, we check for the button text.
