@@ -1,5 +1,4 @@
 import 'dart:ui' as ui;
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constants.dart';
@@ -38,7 +37,11 @@ class _LoginScreenState extends State<LoginScreen>
     )..repeat(reverse: true);
 
     _loadCampusImage();
-    _startIntroScan();
+    
+    // Use post-frame callback to ensure context is available for MediaQuery
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startIntroScan();
+    });
   }
 
   // ------------------------------------------------------------
@@ -46,8 +49,7 @@ class _LoginScreenState extends State<LoginScreen>
   // ------------------------------------------------------------
   Future<void> _loadCampusImage() async {
     final data = await rootBundle.load('assets/images/campus.jpg');
-    final bytes = data.buffer.asUint8List();
-    final codec = await ui.instantiateImageCodec(bytes);
+    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
     final frame = await codec.getNextFrame();
     _campusImage = frame.image;
     if (mounted) setState(() {});
@@ -57,11 +59,13 @@ class _LoginScreenState extends State<LoginScreen>
   // INTRO SCAN (AUTO STOPS ON USER INTERACTION)
   // ------------------------------------------------------------
   Future<void> _startIntroScan() async {
-    final size = WidgetsBinding.instance.window.physicalSize /
-        WidgetsBinding.instance.window.devicePixelRatio;
+    if (!mounted) return;
+    
+    // FIX: Replaced deprecated 'window' with MediaQuery
+    final size = MediaQuery.of(context).size;
 
     final points = [
-      Offset(60, 120),
+      const Offset(60, 120),
       Offset(size.width - 60, 120),
       Offset(60, size.height * 0.45),
       Offset(size.width - 60, size.height * 0.6),
@@ -111,9 +115,10 @@ class _LoginScreenState extends State<LoginScreen>
       );
       final response = await api.post(loginEndpoint, request.toJson());
       await api.saveToken(response['token']);
-      if (context.mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
+      
+      // FIX: Guarded BuildContext across async gap
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       HapticFeedback.heavyImpact();
     } finally {
@@ -165,10 +170,10 @@ class _LoginScreenState extends State<LoginScreen>
                     margin: const EdgeInsets.symmetric(horizontal: 32),
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha: 0.4), // FIX: withValues
                       borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color: const Color(0xFF9CFF00).withOpacity(0.2),
+                        color: const Color(0xFF9CFF00).withValues(alpha: 0.2), // FIX: withValues
                       ),
                     ),
                     child: Form(
@@ -217,9 +222,9 @@ class _LoginScreenState extends State<LoginScreen>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withValues(alpha: 0.08), // FIX: withValues
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)), // FIX: withValues
           ),
           child: TextFormField(
             controller: c,
