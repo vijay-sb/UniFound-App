@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constants.dart';
@@ -20,93 +21,84 @@ class _LoginScreenState extends State<LoginScreen>
 
   bool _isLoading = false;
   Offset _cursorPos = const Offset(200, 200);
-  bool _userInteracted = false;
+
+  // 🔑 INTRO SCAN CONTROL
+  bool _introScanActive = true;
 
   late AnimationController _pulseController;
-  late AnimationController _scanController;
-  late Animation<Offset> _scanAnimation;
-
   static ui.Image? _campusImage;
 
   @override
   void initState() {
     super.initState();
 
-    // 🔵 Torch pulse
     _pulseController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat(reverse: true);
 
-    // 🔦 Auto scan animation (for mobile)
-    _scanController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 6),
-    );
-
-    _scanAnimation = TweenSequence<Offset>([
-      TweenSequenceItem(
-        tween: Tween(begin: const Offset(0.1, 0.2), end: const Offset(0.9, 0.2)),
-        weight: 1,
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: const Offset(0.9, 0.4), end: const Offset(0.1, 0.4)),
-        weight: 1,
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: const Offset(0.1, 0.6), end: const Offset(0.9, 0.6)),
-        weight: 1,
-      ),
-    ]).animate(
-      CurvedAnimation(parent: _scanController, curve: Curves.easeInOut),
-    )..addListener(() {
-        if (!_userInteracted && mounted) {
-          final size = MediaQuery.of(context).size;
-          setState(() {
-            _cursorPos = Offset(
-              _scanAnimation.value.dx * size.width,
-              _scanAnimation.value.dy * size.height,
-            );
-          });
-        }
-      });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final shortestSide = MediaQuery.of(context).size.shortestSide;
-      if (shortestSide < 900) {
-        _scanController.repeat();
-      }
-    });
-
     _loadCampusImage();
+    _startIntroScan();
   }
 
   // ------------------------------------------------------------
   // LOAD IMAGE
   // ------------------------------------------------------------
   Future<void> _loadCampusImage() async {
-    try {
-      final ByteData data = await rootBundle.load('assets/images/campus.jpg');
-      final Uint8List bytes = data.buffer.asUint8List();
-      final ui.Codec codec = await ui.instantiateImageCodec(bytes);
-      final ui.FrameInfo fi = await codec.getNextFrame();
-      _campusImage = fi.image;
+    final data = await rootBundle.load('assets/images/campus.jpg');
+    final bytes = data.buffer.asUint8List();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    _campusImage = frame.image;
+    if (mounted) setState(() {});
+  }
 
-      if (mounted) setState(() {});
-    } catch (e) {
-      print('Campus image load failed: $e');
+  // ------------------------------------------------------------
+  // INTRO SCAN (AUTO STOPS ON USER INTERACTION)
+  // ------------------------------------------------------------
+  Future<void> _startIntroScan() async {
+    final size = WidgetsBinding.instance.window.physicalSize /
+        WidgetsBinding.instance.window.devicePixelRatio;
+
+    final points = [
+      Offset(60, 120),
+      Offset(size.width - 60, 120),
+      Offset(60, size.height * 0.45),
+      Offset(size.width - 60, size.height * 0.6),
+      Offset(size.width * 0.5, size.height * 0.5),
+    ];
+
+    const stepsPerSegment = 30;
+    const stepDelay = Duration(milliseconds: 16);
+
+    for (int i = 0; i < points.length - 1; i++) {
+      final start = points[i];
+      final end = points[i + 1];
+
+      for (int step = 0; step <= stepsPerSegment; step++) {
+        if (!mounted || !_introScanActive) return;
+
+        final t = step / stepsPerSegment;
+        setState(() {
+          _cursorPos = Offset.lerp(start, end, t)!;
+        });
+
+        await Future.delayed(stepDelay);
+      }
     }
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
-    _scanController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  // ------------------------------------------------------------
+  // LOGIN
+  // ------------------------------------------------------------
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -124,14 +116,6 @@ class _LoginScreenState extends State<LoginScreen>
       }
     } catch (e) {
       HapticFeedback.heavyImpact();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -143,128 +127,71 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0E0F10),
       body: Listener(
-        onPointerDown: (_) {
-          _userInteracted = true;
-          _scanController.stop();
-        },
-        onPointerHover: (e) {
-          _userInteracted = true;
-          _scanController.stop();
+        onPointerMove: (e) {
+          if (_introScanActive) {
+            _introScanActive = false; // 🛑 STOP INTRO SCAN
+          }
           setState(() => _cursorPos = e.localPosition);
         },
-        onPointerMove: (e) {
-          _userInteracted = true;
-          _scanController.stop();
+        onPointerHover: (e) {
+          if (_introScanActive) {
+            _introScanActive = false; // 🛑 STOP INTRO SCAN
+          }
           setState(() => _cursorPos = e.localPosition);
         },
         child: Stack(
           children: [
-            // 🔦 TORCH REVEAL BACKGROUND
+            // IMAGE REVEAL
             CustomPaint(
               size: Size.infinite,
               painter: ImageRevealPainter(_cursorPos, _campusImage),
             ),
 
-            // 🟢 TORCH CURSOR
+            // CURSOR CORE (NO GLOW)
             CustomPaint(
               size: Size.infinite,
               painter: TorchCursorPainter(_cursorPos, _pulseController),
             ),
 
-            // --------------------------------------------------
-            // 🔒 LOGIN UI (UNCHANGED)
-            // --------------------------------------------------
+            // UI CARD
             Material(
               color: Colors.transparent,
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(40.0),
+              child: Center(
+                child: SingleChildScrollView(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    margin: const EdgeInsets.symmetric(horizontal: 32),
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(
+                        color: const Color(0xFF9CFF00).withOpacity(0.2),
+                      ),
+                    ),
+                    child: Form(
+                      key: _formKey,
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          AnimatedBuilder(
-                            animation: _pulseController,
-                            builder: (context, child) => Transform.scale(
-                              scale: 1.0 + (_pulseController.value * 0.08),
-                              child: Container(
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  gradient: const RadialGradient(
-                                    colors: [
-                                      Color(0xFF00FF88),
-                                      Colors.transparent
-                                    ],
-                                  ),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF00FF88)
-                                          .withOpacity(0.4),
-                                      blurRadius: 30,
-                                      spreadRadius: 5,
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.inventory_2_outlined,
-                                  size: 56,
-                                  color: Color(0xFF00FF88),
-                                ),
-                              ),
-                            ),
+                          Image.asset(
+                            'assets/images/unifound_logo.png',
+                            height: 100,
                           ),
+                          const SizedBox(height: 32),
+                          _field(_emailController, 'University Email',
+                              Icons.email_outlined, false),
                           const SizedBox(height: 24),
-                          const Text(
-                            'CAMPUS LOST & FOUND',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF00FF88),
-                              letterSpacing: 3,
-                            ),
-                          ),
+                          _field(_passwordController, 'Password',
+                              Icons.lock_outline, true),
+                          const SizedBox(height: 32),
+                          _loginButton(),
                         ],
                       ),
                     ),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Center(
-                          child: Container(
-                            constraints:
-                                const BoxConstraints(maxWidth: 420),
-                            padding: const EdgeInsets.all(32),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.4),
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                children: [
-                                  _inputField(
-                                      _emailController,
-                                      'University Email',
-                                      Icons.email_outlined,
-                                      false),
-                                  const SizedBox(height: 20),
-                                  _inputField(
-                                      _passwordController,
-                                      'Password',
-                                      Icons.lock_outlined,
-                                      true),
-                                  const SizedBox(height: 32),
-                                  _loginButton(),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -274,67 +201,97 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _inputField(
-    TextEditingController controller,
-    String label,
-    IconData icon,
-    bool obscure,
-  ) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscure,
-      enabled: !_isLoading,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: const Color(0xFF00FF88)),
-      ),
-      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+  Widget _field(TextEditingController c, String l, IconData i, bool o) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: TextFormField(
+            controller: c,
+            obscureText: o,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              prefixIcon: Icon(i, color: const Color(0xFF9CFF00), size: 20),
+              border: InputBorder.none,
+              hintText: 'Enter $l',
+              hintStyle:
+                  const TextStyle(color: Colors.white24, fontSize: 14),
+            ),
+            validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _loginButton() {
-    return ElevatedButton(
-      onPressed: _isLoading ? null : _login,
-      child: _isLoading
-          ? const CircularProgressIndicator()
-          : const Text('Sign In'),
+    return SizedBox(
+      height: 56,
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _login,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF9CFF00),
+          foregroundColor: Colors.black,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        child: _isLoading
+            ? const CircularProgressIndicator()
+            : const Text(
+                'Sign In',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+      ),
     );
   }
 }
 
 // ================================================================
-// 🔦 IMAGE REVEAL PAINTER
+// IMAGE REVEAL PAINTER
 // ================================================================
 class ImageRevealPainter extends CustomPainter {
-  final Offset cursorPos;
+  final Offset pos;
   final ui.Image? image;
 
-  ImageRevealPainter(this.cursorPos, this.image);
+  ImageRevealPainter(this.pos, this.image);
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..color = Colors.black);
+
+    canvas.drawRect(rect, Paint()..color = const Color(0xFF0E0F10));
 
     if (image == null) return;
 
     canvas.saveLayer(rect, Paint());
 
-    final torchPaint = Paint()
+    final maskPaint = Paint()
       ..color = Colors.white
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 60);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 70);
 
-    canvas.drawCircle(cursorPos, 180, torchPaint);
-
-    final imagePaint = Paint()..blendMode = BlendMode.srcIn;
+    canvas.drawCircle(pos, 200, maskPaint);
 
     canvas.drawImageRect(
       image!,
-      Rect.fromLTWH(
-          0, 0, image!.width.toDouble(), image!.height.toDouble()),
+      Rect.fromLTWH(0, 0, image!.width.toDouble(), image!.height.toDouble()),
       rect,
-      imagePaint,
+      Paint()..blendMode = BlendMode.srcIn,
     );
 
     canvas.restore();
@@ -342,47 +299,23 @@ class ImageRevealPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant ImageRevealPainter old) =>
-      old.cursorPos != cursorPos || old.image != image;
+      old.pos != pos || old.image != image;
 }
 
 // ================================================================
-// 🟢 TORCH CURSOR PAINTER
+// CURSOR CORE (INVISIBLE / NO GLOW)
 // ================================================================
 class TorchCursorPainter extends CustomPainter {
-  final Offset cursorPos;
-  final Animation<double> animation;
+  final Offset pos;
+  final Animation<double> anim;
 
-  TorchCursorPainter(this.cursorPos, this.animation)
-      : super(repaint: animation);
+  TorchCursorPainter(this.pos, this.anim) : super(repaint: anim);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final pulse = animation.value;
-
-    final innerRadius = 20 + pulse * 6;
-    final outerRadius = 60 + pulse * 15;
-
-    final corePaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          Colors.greenAccent.withOpacity(0.95),
-          Colors.greenAccent.withOpacity(0.6),
-          Colors.transparent,
-        ],
-      ).createShader(
-        Rect.fromCircle(center: cursorPos, radius: innerRadius),
-      );
-
-    canvas.drawCircle(cursorPos, innerRadius, corePaint);
-
-    final glowPaint = Paint()
-      ..color = Colors.greenAccent.withOpacity(0.25)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 35);
-
-    canvas.drawCircle(cursorPos, outerRadius, glowPaint);
+    // Intentionally empty — cursor core disabled
   }
 
   @override
-  bool shouldRepaint(covariant TorchCursorPainter old) =>
-      old.cursorPos != cursorPos;
+  bool shouldRepaint(covariant TorchCursorPainter old) => old.pos != pos;
 }
