@@ -33,37 +33,24 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
     )..repeat(reverse: true);
 
-    _generateCampusImage();
+    _loadCampusImage();
   }
 
   // ------------------------------------------------------------
   // CREATE A FAKE "CAMPUS" IMAGE (NO ASSETS REQUIRED)
   // ------------------------------------------------------------
-  Future<void> _generateCampusImage() async {
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-
-    final bgPaint = Paint()
-      ..shader = ui.Gradient.radial(
-        const Offset(500, 500),
-        800,
-        const [
-          Color(0xFF00FF88),
-          Color(0xFF004422),
-          Color(0xFF00CC66),
-        ],
-      );
-
-    canvas.drawRect(const Rect.fromLTWH(0, 0, 1000, 1000), bgPaint);
-
-    final buildingPaint = Paint()..color = const Color(0xFF003311);
-    canvas.drawRect(const Rect.fromLTWH(150, 550, 220, 300), buildingPaint);
-    canvas.drawCircle(const Offset(420, 640), 90, buildingPaint);
-
-    final picture = recorder.endRecording();
-    _campusImage = await picture.toImage(1000, 1000);
-
-    if (mounted) setState(() {});
+  Future<void> _loadCampusImage() async {
+    try {
+      final ByteData data = await rootBundle.load('assets/images/campus.jpg');
+      final Uint8List bytes = data.buffer.asUint8List();
+      final ui.Codec codec = await ui.instantiateImageCodec(bytes);
+      final ui.FrameInfo fi = await codec.getNextFrame();
+      _campusImage = fi.image;
+      
+      if (mounted) setState(() {});
+    } catch (e) {
+      print('Campus image load failed: $e');
+    }
   }
 
   @override
@@ -351,35 +338,30 @@ class ImageRevealPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
 
-    if (image == null) {
-      canvas.drawRect(rect, Paint()..color = Colors.black);
-      return;
-    }
-
-    canvas.saveLayer(rect, Paint());
-
-    // Background image
-    canvas.drawImageRect(
-      image!,
-      Rect.fromLTWH(
-        0,
-        0,
-        image!.width.toDouble(),
-        image!.height.toDouble(),
-      ),
-      rect,
-      Paint(),
-    );
-
-    // Black overlay
+    // 1️⃣ Draw the solid black background first
     canvas.drawRect(rect, Paint()..color = Colors.black);
 
-    // Torch hole
-    final torchPaint = Paint()
-      ..blendMode = BlendMode.clear
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 35);
+    if (image == null) return;
 
-    canvas.drawCircle(cursorPos, 140, torchPaint);
+    // 2️⃣ Create a new layer for the reveal effect
+    canvas.saveLayer(rect, Paint());
+
+    // 3️⃣ Draw the "Light Beam" (This defines WHERE the image will appear)
+    final torchPaint = Paint()
+      ..color = Colors.white // Color doesn't matter for masking
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 60); // Soft edges
+    
+    canvas.drawCircle(cursorPos, 180, torchPaint); // Adjust radius as needed
+
+    // 4️⃣ Use BlendMode.srcIn to draw the image ONLY inside the circle above
+    final imagePaint = Paint()..blendMode = ui.BlendMode.srcIn;
+    
+    canvas.drawImageRect(
+      image!,
+      Rect.fromLTWH(0, 0, image!.width.toDouble(), image!.height.toDouble()),
+      rect,
+      imagePaint,
+    );
 
     canvas.restore();
   }
@@ -388,7 +370,6 @@ class ImageRevealPainter extends CustomPainter {
   bool shouldRepaint(covariant ImageRevealPainter old) =>
       old.cursorPos != cursorPos || old.image != image;
 }
-
 // ================================================================
 // 🟢 TORCH CURSOR PAINTER
 // ================================================================
@@ -401,20 +382,31 @@ class TorchCursorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final radius = 18 + animation.value * 10;
+    final pulse = animation.value;
 
-    final paint = Paint()
+    final innerRadius = 20 + pulse * 6;
+    final outerRadius = 60 + pulse * 15;
+
+    // 🌟 INNER BRIGHT CORE
+    final corePaint = Paint()
       ..shader = RadialGradient(
         colors: [
-          Colors.greenAccent.withOpacity(0.9),
-          Colors.green.withOpacity(0.4),
+          Colors.greenAccent.withOpacity(0.95),
+          Colors.greenAccent.withOpacity(0.6),
           Colors.transparent,
         ],
       ).createShader(
-        Rect.fromCircle(center: cursorPos, radius: radius),
+        Rect.fromCircle(center: cursorPos, radius: innerRadius),
       );
 
-    canvas.drawCircle(cursorPos, radius, paint);
+    canvas.drawCircle(cursorPos, innerRadius, corePaint);
+
+    // 🌫 OUTER GLOW (torch spread)
+    final glowPaint = Paint()
+      ..color = Colors.greenAccent.withOpacity(0.25)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 35);
+
+    canvas.drawCircle(cursorPos, outerRadius, glowPaint);
   }
 
   @override
