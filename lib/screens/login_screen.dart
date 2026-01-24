@@ -20,24 +20,69 @@ class _LoginScreenState extends State<LoginScreen>
 
   bool _isLoading = false;
   Offset _cursorPos = const Offset(200, 200);
+  bool _userInteracted = false;
 
   late AnimationController _pulseController;
+  late AnimationController _scanController;
+  late Animation<Offset> _scanAnimation;
+
   static ui.Image? _campusImage;
 
   @override
   void initState() {
     super.initState();
 
+    // 🔵 Torch pulse
     _pulseController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat(reverse: true);
 
+    // 🔦 Auto scan animation (for mobile)
+    _scanController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    );
+
+    _scanAnimation = TweenSequence<Offset>([
+      TweenSequenceItem(
+        tween: Tween(begin: const Offset(0.1, 0.2), end: const Offset(0.9, 0.2)),
+        weight: 1,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: const Offset(0.9, 0.4), end: const Offset(0.1, 0.4)),
+        weight: 1,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: const Offset(0.1, 0.6), end: const Offset(0.9, 0.6)),
+        weight: 1,
+      ),
+    ]).animate(
+      CurvedAnimation(parent: _scanController, curve: Curves.easeInOut),
+    )..addListener(() {
+        if (!_userInteracted && mounted) {
+          final size = MediaQuery.of(context).size;
+          setState(() {
+            _cursorPos = Offset(
+              _scanAnimation.value.dx * size.width,
+              _scanAnimation.value.dy * size.height,
+            );
+          });
+        }
+      });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final shortestSide = MediaQuery.of(context).size.shortestSide;
+      if (shortestSide < 900) {
+        _scanController.repeat();
+      }
+    });
+
     _loadCampusImage();
   }
 
   // ------------------------------------------------------------
-  // CREATE A FAKE "CAMPUS" IMAGE (NO ASSETS REQUIRED)
+  // LOAD IMAGE
   // ------------------------------------------------------------
   Future<void> _loadCampusImage() async {
     try {
@@ -46,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen>
       final ui.Codec codec = await ui.instantiateImageCodec(bytes);
       final ui.FrameInfo fi = await codec.getNextFrame();
       _campusImage = fi.image;
-      
+
       if (mounted) setState(() {});
     } catch (e) {
       print('Campus image load failed: $e');
@@ -56,6 +101,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void dispose() {
     _pulseController.dispose();
+    _scanController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -98,31 +144,36 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Listener(
-        onPointerHover: (e) => setState(() => _cursorPos = e.localPosition),
-        onPointerMove: (e) => setState(() => _cursorPos = e.localPosition),
+        onPointerDown: (_) {
+          _userInteracted = true;
+          _scanController.stop();
+        },
+        onPointerHover: (e) {
+          _userInteracted = true;
+          _scanController.stop();
+          setState(() => _cursorPos = e.localPosition);
+        },
+        onPointerMove: (e) {
+          _userInteracted = true;
+          _scanController.stop();
+          setState(() => _cursorPos = e.localPosition);
+        },
         child: Stack(
           children: [
             // 🔦 TORCH REVEAL BACKGROUND
-            RepaintBoundary(
-              child: CustomPaint(
-                size: Size.infinite,
-                painter: ImageRevealPainter(_cursorPos, _campusImage),
-              ),
+            CustomPaint(
+              size: Size.infinite,
+              painter: ImageRevealPainter(_cursorPos, _campusImage),
             ),
 
-            // 🟢 PULSING TORCH CURSOR
-            RepaintBoundary(
-              child: CustomPaint(
-                size: Size.infinite,
-                painter: TorchCursorPainter(
-                  _cursorPos,
-                  _pulseController,
-                ),
-              ),
+            // 🟢 TORCH CURSOR
+            CustomPaint(
+              size: Size.infinite,
+              painter: TorchCursorPainter(_cursorPos, _pulseController),
             ),
 
             // --------------------------------------------------
-            // 🔒 YOUR LOGIN UI — UNCHANGED
+            // 🔒 LOGIN UI (UNCHANGED)
             // --------------------------------------------------
             Material(
               color: Colors.transparent,
@@ -172,22 +223,6 @@ class _LoginScreenState extends State<LoginScreen>
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF00FF88),
                               letterSpacing: 3,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black54,
-                                  offset: Offset(0, 4),
-                                  blurRadius: 8,
-                                )
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Secure • Private • AI-Powered',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFF00FF88),
-                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -200,54 +235,26 @@ class _LoginScreenState extends State<LoginScreen>
                           child: Container(
                             constraints:
                                 const BoxConstraints(maxWidth: 420),
-                            margin:
-                                const EdgeInsets.symmetric(horizontal: 24),
                             padding: const EdgeInsets.all(32),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.black.withOpacity(0.4),
-                                  Colors.black.withOpacity(0.2)
-                                ],
-                              ),
+                              color: Colors.black.withOpacity(0.4),
                               borderRadius: BorderRadius.circular(24),
-                              border: Border.all(
-                                color: const Color(0xFF00FF88)
-                                    .withOpacity(0.3),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF00FF88)
-                                      .withOpacity(0.15),
-                                  blurRadius: 40,
-                                ),
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.6),
-                                  blurRadius: 20,
-                                ),
-                              ],
                             ),
                             child: Form(
                               key: _formKey,
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.stretch,
                                 children: [
                                   _inputField(
-                                    _emailController,
-                                    'University Email',
-                                    Icons.email_outlined,
-                                    false,
-                                  ),
+                                      _emailController,
+                                      'University Email',
+                                      Icons.email_outlined,
+                                      false),
                                   const SizedBox(height: 20),
                                   _inputField(
-                                    _passwordController,
-                                    'Password',
-                                    Icons.lock_outlined,
-                                    true,
-                                  ),
+                                      _passwordController,
+                                      'Password',
+                                      Icons.lock_outlined,
+                                      true),
                                   const SizedBox(height: 32),
                                   _loginButton(),
                                 ],
@@ -273,60 +280,31 @@ class _LoginScreenState extends State<LoginScreen>
     IconData icon,
     bool obscure,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
+    return TextFormField(
+      controller: controller,
+      obscureText: obscure,
+      enabled: !_isLoading,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: const Color(0xFF00FF88)),
       ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscure,
-        enabled: !_isLoading,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.white70),
-          prefixIcon: Icon(icon, color: const Color(0xFF00FF88)),
-          border: InputBorder.none,
-        ),
-        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-      ),
+      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
     );
   }
 
   Widget _loginButton() {
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF00FF88), Color(0xFF00CC6A)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : _login,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-        ),
-        child: _isLoading
-            ? const CircularProgressIndicator()
-            : const Text(
-                'Sign In',
-                style: TextStyle(
-                  color: Colors.black87,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-      ),
+    return ElevatedButton(
+      onPressed: _isLoading ? null : _login,
+      child: _isLoading
+          ? const CircularProgressIndicator()
+          : const Text('Sign In'),
     );
   }
 }
 
 // ================================================================
-// 🔦 IMAGE REVEAL PAINTER (CORRECT & WORKING)
+// 🔦 IMAGE REVEAL PAINTER
 // ================================================================
 class ImageRevealPainter extends CustomPainter {
   final Offset cursorPos;
@@ -337,28 +315,24 @@ class ImageRevealPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-
-    // 1️⃣ Draw the solid black background first
     canvas.drawRect(rect, Paint()..color = Colors.black);
 
     if (image == null) return;
 
-    // 2️⃣ Create a new layer for the reveal effect
     canvas.saveLayer(rect, Paint());
 
-    // 3️⃣ Draw the "Light Beam" (This defines WHERE the image will appear)
     final torchPaint = Paint()
-      ..color = Colors.white // Color doesn't matter for masking
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 60); // Soft edges
-    
-    canvas.drawCircle(cursorPos, 180, torchPaint); // Adjust radius as needed
+      ..color = Colors.white
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 60);
 
-    // 4️⃣ Use BlendMode.srcIn to draw the image ONLY inside the circle above
-    final imagePaint = Paint()..blendMode = ui.BlendMode.srcIn;
-    
+    canvas.drawCircle(cursorPos, 180, torchPaint);
+
+    final imagePaint = Paint()..blendMode = BlendMode.srcIn;
+
     canvas.drawImageRect(
       image!,
-      Rect.fromLTWH(0, 0, image!.width.toDouble(), image!.height.toDouble()),
+      Rect.fromLTWH(
+          0, 0, image!.width.toDouble(), image!.height.toDouble()),
       rect,
       imagePaint,
     );
@@ -370,6 +344,7 @@ class ImageRevealPainter extends CustomPainter {
   bool shouldRepaint(covariant ImageRevealPainter old) =>
       old.cursorPos != cursorPos || old.image != image;
 }
+
 // ================================================================
 // 🟢 TORCH CURSOR PAINTER
 // ================================================================
@@ -387,7 +362,6 @@ class TorchCursorPainter extends CustomPainter {
     final innerRadius = 20 + pulse * 6;
     final outerRadius = 60 + pulse * 15;
 
-    // 🌟 INNER BRIGHT CORE
     final corePaint = Paint()
       ..shader = RadialGradient(
         colors: [
@@ -401,7 +375,6 @@ class TorchCursorPainter extends CustomPainter {
 
     canvas.drawCircle(cursorPos, innerRadius, corePaint);
 
-    // 🌫 OUTER GLOW (torch spread)
     final glowPaint = Paint()
       ..color = Colors.greenAccent.withOpacity(0.25)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 35);
