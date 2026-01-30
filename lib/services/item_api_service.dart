@@ -18,6 +18,7 @@ class ItemApiService {
       Uri.parse('$baseUrl/api/items/discover'),
       headers: {
         'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
       },
     );
 

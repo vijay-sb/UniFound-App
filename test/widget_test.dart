@@ -33,6 +33,9 @@ void main() {
       home: BlindFeedScreen(apiService: null),
     ));
 
+    // Wait for futures and animations to settle so UI is fully rendered
+    await tester.pumpAndSettle();
+
     // 1. Verify Logo exists (Check for an Image widget)
     expect(find.byType(Image), findsWidgets);
 

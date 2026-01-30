@@ -1,261 +1,3 @@
-// import 'package:flutter/material.dart';
-// import '../models/item_dto.dart';
-// import '../services/item_api_service.dart';
-
-// class BlindFeedScreen extends StatefulWidget {
-//   final ItemApiService apiService;
-//   final VoidCallback onLogout;
-
-//   const BlindFeedScreen({
-//     super.key,
-//     required this.apiService,
-//     required this.onLogout,
-//   });
-
-//   @override
-//   State<BlindFeedScreen> createState() => _BlindFeedScreenState();
-// }
-
-// class _BlindFeedScreenState extends State<BlindFeedScreen> {
-//   late Future<List<ItemDto>> _future;
-//   String _searchQuery = '';
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _future = widget.apiService.fetchDiscoverItems();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     const accent = Color(0xFF9CFF00);
-
-//     return Scaffold(
-//       backgroundColor: Colors.black,
-//       appBar: AppBar(
-//         backgroundColor: Colors.black,
-//         elevation: 0,
-//         title: const Text('Lost & Found'),
-//         actions: [
-//           IconButton(
-//             icon: const Icon(Icons.logout),
-//             onPressed: widget.onLogout,
-//           )
-//         ],
-//       ),
-//       body: Column(
-//         children: [
-//           _SearchBar(
-//             onChanged: (value) {
-//               setState(() => _searchQuery = value.toLowerCase());
-//             },
-//           ),
-//           Expanded(
-//             child: FutureBuilder<List<ItemDto>>(
-//               future: _future,
-//               builder: (context, snapshot) {
-//                 if (snapshot.connectionState == ConnectionState.waiting) {
-//                   return const Center(child: CircularProgressIndicator());
-//                 }
-
-//                 if (snapshot.hasError) {
-//                   return _ErrorState(onRetry: () {
-//                     setState(() {
-//                       _future = widget.apiService.fetchDiscoverItems();
-//                     });
-//                   });
-//                 }
-
-//                 final items = snapshot.data!
-//                     .where((i) =>
-//                         i.category.toLowerCase().contains(_searchQuery) ||
-//                         i.campusZone.toLowerCase().contains(_searchQuery))
-//                     .toList();
-
-//                 if (items.isEmpty) {
-//                   return const _EmptyState();
-//                 }
-
-//                 return GridView.builder(
-//                   padding: const EdgeInsets.all(16),
-//                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-//                     crossAxisCount: 2,
-//                     mainAxisSpacing: 16,
-//                     crossAxisSpacing: 16,
-//                     childAspectRatio: 1.1,
-//                   ),
-//                   itemCount: items.length,
-//                   itemBuilder: (context, index) {
-//                     return _BlindItemCard(
-//                       item: items[index],
-//                       accent: accent,
-//                       onLostPressed: () {
-//                         // 🚧 Next PR: Claim flow
-//                         ScaffoldMessenger.of(context).showSnackBar(
-//                           const SnackBar(
-//                             content: Text('Claim flow coming next 🚀'),
-//                           ),
-//                         );
-//                       },
-//                     );
-//                   },
-//                 );
-//               },
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// class _SearchBar extends StatelessWidget {
-//   final ValueChanged<String> onChanged;
-
-//   const _SearchBar({required this.onChanged});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Padding(
-//       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-//       child: TextField(
-//         onChanged: onChanged,
-//         style: const TextStyle(color: Colors.white),
-//         decoration: InputDecoration(
-//           hintText: 'Search by category or location',
-//           hintStyle: const TextStyle(color: Colors.white54),
-//           prefixIcon: const Icon(Icons.search, color: Colors.white54),
-//           filled: true,
-//           fillColor: Colors.white12,
-//           border: OutlineInputBorder(
-//             borderRadius: BorderRadius.circular(14),
-//             borderSide: BorderSide.none,
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// class _BlindItemCard extends StatefulWidget {
-//   final ItemDto item;
-//   final Color accent;
-//   final VoidCallback onLostPressed;
-
-//   const _BlindItemCard({
-//     required this.item,
-//     required this.accent,
-//     required this.onLostPressed,
-//   });
-
-//   @override
-//   State<_BlindItemCard> createState() => _BlindItemCardState();
-// }
-
-// class _BlindItemCardState extends State<_BlindItemCard> {
-//   bool _hovered = false;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return MouseRegion(
-//       onEnter: (_) => setState(() => _hovered = true),
-//       onExit: (_) => setState(() => _hovered = false),
-//       child: AnimatedScale(
-//         duration: const Duration(milliseconds: 180),
-//         scale: _hovered ? 1.03 : 1.0,
-//         child: Container(
-//           padding: const EdgeInsets.all(16),
-//           decoration: BoxDecoration(
-//             color: Colors.white24,
-//             borderRadius: BorderRadius.circular(20),
-//             border: Border.all(
-//               color: widget.accent.color.withValues(alpha: 0.4),
-//             ),
-//           ),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               Text(
-//                 widget.item.category,
-//                 style: TextStyle(
-//                   color: widget.accent,
-//                   fontSize: 20,
-//                   fontWeight: FontWeight.bold,
-//                 ),
-//               ),
-//               const SizedBox(height: 8),
-//               Text(
-//                 widget.item.campusZone,
-//                 style: const TextStyle(color: Colors.white70),
-//               ),
-//               const SizedBox(height: 4),
-//               Text(
-//                 'Found on ${widget.item.foundAt.toLocal().toString().split(' ').first}',
-//                 style: const TextStyle(color: Colors.white54),
-//               ),
-//               const Spacer(),
-//               SizedBox(
-//                 width: double.infinity,
-//                 child: ElevatedButton(
-//                   onPressed: widget.onLostPressed,
-//                   style: ElevatedButton.styleFrom(
-//                     backgroundColor: widget.accent,
-//                     foregroundColor: Colors.black,
-//                     shape: RoundedRectangleBorder(
-//                       borderRadius: BorderRadius.circular(12),
-//                     ),
-//                   ),
-//                   child: const Text('I LOST THIS'),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// class _EmptyState extends StatelessWidget {
-//   const _EmptyState();
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return const Center(
-//       child: Text(
-//         'No items found',
-//         style: TextStyle(color: Colors.white54),
-//       ),
-//     );
-//   }
-// }
-
-// class _ErrorState extends StatelessWidget {
-//   final VoidCallback onRetry;
-
-//   const _ErrorState({required this.onRetry});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Center(
-//       child: Column(
-//         mainAxisSize: MainAxisSize.min,
-//         children: [
-//           const Text(
-//             'Failed to load items',
-//             style: TextStyle(color: Colors.white70),
-//           ),
-//           const SizedBox(height: 12),
-//           ElevatedButton(
-//             onPressed: onRetry,
-//             child: const Text('Retry'),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -277,14 +19,28 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
   String _searchQuery = '';
   final Color accentColor = const Color(0xFF9CFF00);
 
+  // Inside _BlindFeedScreenState class
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadData(); // Initial load
   }
 
+  // Inside _BlindFeedScreenState class
   void _loadData() {
-    _future = widget.apiService?.fetchDiscoverItems() ?? Future.value(_mockItems);
+    if (widget.apiService != null) {
+      setState(() {
+        // Use the service only if it exists
+        _future = widget.apiService!.fetchDiscoverItems();
+      });
+    } else {
+      // If the service is missing, we fall back to mock data
+      // so you can at least see the UI while fixing the integration.
+      setState(() {
+        _future = Future.value(_mockItems);
+      });
+      debugPrint("Warning: apiService was null, falling back to mock data.");
+    }
   }
 
   @override
@@ -320,7 +76,8 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                           child: CircleAvatar(
                             radius: 20,
                             backgroundColor: Colors.white12,
-                            child: Icon(Icons.person_outline, color: accentColor),
+                            child:
+                                Icon(Icons.person_outline, color: accentColor),
                           ),
                         ),
                       ),
@@ -329,19 +86,23 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                 ),
                 _StyledSearchBar(
                   accent: accentColor,
-                  onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                  onChanged: (v) =>
+                      setState(() => _searchQuery = v.toLowerCase()),
                 ),
                 Expanded(
                   child: FutureBuilder<List<ItemDto>>(
                     future: _future,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator(color: accentColor));
+                        return Center(
+                            child:
+                                CircularProgressIndicator(color: accentColor));
                       }
-                      
+
                       // 1. ERROR STATE
                       if (snapshot.hasError) {
-                        return _ErrorState(onRetry: () => setState(() => _loadData()));
+                        return _ErrorState(
+                            onRetry: () => setState(() => _loadData()));
                       }
 
                       final items = (snapshot.data ?? [])
@@ -357,7 +118,8 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
 
                       return GridView.builder(
                         padding: const EdgeInsets.all(20),
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 450,
                           mainAxisSpacing: 20,
                           crossAxisSpacing: 20,
@@ -467,7 +229,8 @@ class _BlindItemCardState extends State<_BlindItemCard> {
                       Text(
                         'Found: ${widget.item.foundAt.toString().split(' ').first}',
                         style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 13),
                       ),
                     ],
                   ),
@@ -479,8 +242,8 @@ class _BlindItemCardState extends State<_BlindItemCard> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color:
-                              widget.accent.withValues(alpha: _isHovered ? 0.6 : 0.2),
+                          color: widget.accent
+                              .withValues(alpha: _isHovered ? 0.6 : 0.2),
                           blurRadius: _isHovered ? 15 : 5,
                           spreadRadius: _isHovered ? 2 : 0,
                         )
@@ -563,8 +326,8 @@ class _GridPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // 1. HIGHER OPACITY GRIDS
     final gridPaint = Paint()
-      ..color =
-          const Color(0xFF9CFF00).withValues(alpha: 0.15) // Increased visibility
+      ..color = const Color(0xFF9CFF00)
+          .withValues(alpha: 0.15) // Increased visibility
       ..strokeWidth = 1.0;
 
     const double step = 50; // Larger grid size
@@ -618,7 +381,9 @@ class _StyledSearchBar extends StatelessWidget {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-              color: accent.withValues(alpha: 0.1), blurRadius: 25, spreadRadius: -5)
+              color: accent.withValues(alpha: 0.1),
+              blurRadius: 25,
+              spreadRadius: -5)
         ],
       ),
       child: TextField(
@@ -655,11 +420,13 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off, size: 80, color: const Color(0xFF9CFF00).withValues(alpha: 0.3)),
+          Icon(Icons.search_off,
+              size: 80, color: const Color(0xFF9CFF00).withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           const Text(
             'No lost items found',
-            style: TextStyle(color: Colors.white54, fontSize: 16, letterSpacing: 1.1),
+            style: TextStyle(
+                color: Colors.white54, fontSize: 16, letterSpacing: 1.1),
           ),
         ],
       ),
@@ -679,8 +446,12 @@ class _ErrorState extends StatelessWidget {
         children: [
           const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
           const SizedBox(height: 12),
-          const Text('Failed to load items', style: TextStyle(color: Colors.white70)),
-          TextButton(onPressed: onRetry, child: const Text('RETRY', style: TextStyle(color: Color(0xFF9CFF00)))),
+          const Text('Failed to load items',
+              style: TextStyle(color: Colors.white70)),
+          TextButton(
+              onPressed: onRetry,
+              child: const Text('RETRY',
+                  style: TextStyle(color: Color(0xFF9CFF00)))),
         ],
       ),
     );
