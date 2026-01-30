@@ -27,6 +27,8 @@
 
 import 'package:flutter/material.dart';
 import 'screens/blind_feed_screen.dart';
+import 'screens/found_item_form_screen.dart'; // Import the new form
+import 'screens/login_screen.dart';           // Import login
 
 void main() {
   runApp(const MyApp());
@@ -39,8 +41,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      title: 'UniFound',
       theme: ThemeData.dark(),
-      home: const BlindFeedScreen(), // ✅ UI-only DEV MODE
+      // 1. Define the starting page
+      initialRoute: '/', 
+      
+      // 2. The Route Table: This links the "Pathways" to the actual Screens
+      routes: {
+        //'/': (context) => const LoginScreen(),
+        '/': (context) => const BlindFeedScreen(),
+        '/found-form': (context) => const FoundItemFormScreen(),
+      },
     );
   }
 }

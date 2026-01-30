@@ -47,6 +47,35 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      floatingActionButton: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter:
+              ImageFilter.blur(sigmaX: 10, sigmaY: 10), // The glass blur effect
+          child: FloatingActionButton.extended(
+            onPressed: () => Navigator.pushNamed(context, '/found-form'),
+            // Using #0c4b75 with 0.7 opacity for a translucent feel
+            backgroundColor: const Color(0xFF0C4B75).withValues(alpha: 0.7),
+            elevation: 0, // Remove shadow to enhance the glass look
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+              side: BorderSide(
+                color: const Color(0xFF0C4B75).withValues(alpha: 0.3),
+                width: 1.5,
+              ),
+            ),
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              "Found an item",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ),
+      ),
       body: Stack(
         children: [
           const Positioned.fill(child: _EnhancedParticleBackground()),
