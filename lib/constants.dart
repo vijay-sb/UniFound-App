@@ -1,3 +1,3 @@
-const String baseUrl = 'https://your-backend-api.com/api/v1';
+const String baseUrl = 'http://localhost:8080/api';
 const String loginEndpoint = '/auth/login';
 const String jwtKey = 'jwt_token';
