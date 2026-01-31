@@ -11,7 +11,7 @@ class ApiService {
   Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data) async {
     try {
       final response = await _client.post(
-        Uri.parse('$baseUrl$loginEndpoint'),
+        Uri.parse('$baseUrl$endpoint'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(data),
       );
@@ -23,8 +23,26 @@ class ApiService {
         return responseData;
       } else {
         // Return error message from backend if available
-        throw Exception(responseData['message'] ?? 'Login failed: ${response.statusCode}');
+        throw Exception(responseData['message'] ?? 'Request failed: ${response.statusCode}');
       }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Call logout endpoint. Returns true if backend responded 200.
+  Future<bool> logout() async {
+    try {
+      final token = await getToken();
+      final response = await _client.post(
+        Uri.parse('$baseUrl$logoutEndpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      return response.statusCode == 200;
     } catch (e) {
       throw Exception('Network error: $e');
     }

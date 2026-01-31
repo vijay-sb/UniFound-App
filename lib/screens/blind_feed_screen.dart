@@ -93,9 +93,54 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                         height: 65,
                         fit: BoxFit.contain,
                       ),
-                      // 2. PROFILE CIRCLE FOR LOGOUT
-                      GestureDetector(
-                        onTap: widget.onLogout,
+                      // 2. PROFILE CIRCLE FOR LOGOUT (opens menu)
+                      PopupMenuButton<String>(
+                        tooltip: 'Profile',
+                        color: const Color(0xFF121212), // dark grey background for menu
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: accentColor.withValues(alpha: 0.18), width: 1.2),
+                        ),
+                        elevation: 8,
+                        onSelected: (value) async {
+                          if (value == 'logout') {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: const Color(0xFF121212),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                title: Text('Logout', style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
+                                content: const Text('Are you sure you want to logout?', style: TextStyle(color: Colors.white70)),
+                                actions: [
+                                  TextButton(
+                                    style: TextButton.styleFrom(foregroundColor: Colors.white),
+                                    onPressed: () => Navigator.of(ctx).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    style: TextButton.styleFrom(
+                                      backgroundColor: accentColor,
+                                      foregroundColor: Colors.black,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    onPressed: () => Navigator.of(ctx).pop(true),
+                                    child: const Text('Logout'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirmed == true) {
+                              if (widget.onLogout != null) widget.onLogout!();
+                            }
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'logout',
+                            child: Row(children: [Icon(Icons.logout, color: accentColor), const SizedBox(width:8), const Text('Logout', style: TextStyle(color: Colors.white))]),
+                          ),
+                        ],
                         child: Container(
                           padding: const EdgeInsets.all(2),
                           decoration: BoxDecoration(
@@ -105,8 +150,7 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                           child: CircleAvatar(
                             radius: 20,
                             backgroundColor: Colors.white12,
-                            child:
-                                Icon(Icons.person_outline, color: accentColor),
+                            child: Icon(Icons.person_outline, color: accentColor),
                           ),
                         ),
                       ),
