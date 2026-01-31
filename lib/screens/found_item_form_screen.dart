@@ -19,7 +19,6 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
   final Color accentColor = const Color(0xFF9CFF00);
 
   // Data State
-  XFile? _pickedFile;
   Uint8List? _imageBytes;
   String? _selectedCategory;
   final _customCategoryController = TextEditingController();
@@ -81,7 +80,6 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
       if (!mounted) return;
       setState(() {
         _imageBytes = bytes;
-        _pickedFile = image;
       });
       Navigator.pop(context);
     }
