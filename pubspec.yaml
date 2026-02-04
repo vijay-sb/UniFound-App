@@ -15,6 +15,9 @@ dependencies:
   http: ^1.2.1
   flutter_secure_storage: ^9.2.2
   lottie: ^3.1.2
+  image_picker: ^1.0.7        # For camera and gallery access
+  geolocator: ^10.1.0        # To get current GPS coordinates
+  maps_toolkit: ^2.0.1       # To check if a point is inside a polygon
 
 dev_dependencies:
   flutter_test:

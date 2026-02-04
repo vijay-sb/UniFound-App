@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../constants.dart';
 import '../models/login_request.dart';
 import '../services/api_service.dart';
+import 'package:flutter/foundation.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,10 +38,23 @@ class _LoginScreenState extends State<LoginScreen>
     )..repeat(reverse: true);
 
     _loadCampusImage();
-    
-    // Use post-frame callback to ensure context is available for MediaQuery
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startIntroScan();
+      // Check if it's a mobile platform
+      final isMobile = defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android;
+
+      // On Web, browsers can mimic mobile, so we double-check width
+      final isSmallScreen = MediaQuery.of(context).size.width < 600;
+
+      if (isMobile || isSmallScreen) {
+        // Give the UI a frame to settle so MediaQuery is accurate
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) _startIntroScan();
+        });
+      } else {
+        _introScanActive = false;
+      }
     });
   }
 
@@ -60,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen>
   // ------------------------------------------------------------
   Future<void> _startIntroScan() async {
     if (!mounted) return;
-    
+
     // FIX: Replaced deprecated 'window' with MediaQuery
     final size = MediaQuery.of(context).size;
 
@@ -103,6 +117,7 @@ class _LoginScreenState extends State<LoginScreen>
   // ------------------------------------------------------------
   // LOGIN
   // ------------------------------------------------------------
+  // Inside _LoginScreenState class in login_screen.dart
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -113,14 +128,27 @@ class _LoginScreenState extends State<LoginScreen>
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+
       final response = await api.post(loginEndpoint, request.toJson());
-      await api.saveToken(response['token']);
-      
-      // FIX: Guarded BuildContext across async gap
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home');
+
+      // FIX: Match the backend key 'access_token' from your screenshot
+      if (response.containsKey('access_token')) {
+        await api.saveToken(response['access_token']);
+
+        if (!mounted) return;
+        // Navigate to home (ensure this route is defined in main.dart)
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        throw Exception("Token not found in response");
+      }
     } catch (e) {
       HapticFeedback.heavyImpact();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(e.toString()), backgroundColor: Colors.redAccent),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -170,10 +198,12 @@ class _LoginScreenState extends State<LoginScreen>
                     margin: const EdgeInsets.symmetric(horizontal: 32),
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4), // FIX: withValues
+                      color: Colors.black
+                          .withValues(alpha: 0.4), // FIX: withValues
                       borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color: const Color(0xFF9CFF00).withValues(alpha: 0.2), // FIX: withValues
+                        color: const Color(0xFF9CFF00)
+                            .withValues(alpha: 0.2), // FIX: withValues
                       ),
                     ),
                     child: Form(
@@ -224,7 +254,8 @@ class _LoginScreenState extends State<LoginScreen>
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.08), // FIX: withValues
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)), // FIX: withValues
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.1)), // FIX: withValues
           ),
           child: TextFormField(
             controller: c,
@@ -234,8 +265,7 @@ class _LoginScreenState extends State<LoginScreen>
               prefixIcon: Icon(i, color: const Color(0xFF9CFF00), size: 20),
               border: InputBorder.none,
               hintText: 'Enter $l',
-              hintStyle:
-                  const TextStyle(color: Colors.white24, fontSize: 14),
+              hintStyle: const TextStyle(color: Colors.white24, fontSize: 14),
             ),
             validator: (v) => v == null || v.isEmpty ? 'Required' : null,
           ),
