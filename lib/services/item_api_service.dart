@@ -29,4 +29,23 @@ class ItemApiService {
     final List data = json.decode(response.body);
     return data.map((e) => ItemDto.fromJson(e)).toList();
   }
+
+  Future<void> reportFoundItem(Map<String, dynamic> itemData) async {
+    final token = await getToken();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/items/found'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode(itemData),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      // Decode error message from backend if available
+      final errorData = json.decode(response.body);
+      throw Exception(errorData['error'] ?? 'Failed to report item');
+    }
+  }
 }

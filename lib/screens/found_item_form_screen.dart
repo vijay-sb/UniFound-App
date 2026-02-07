@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:maps_toolkit/maps_toolkit.dart' as mp;
 import '../widgets/handover_alert.dart';
+import '../services/item_api_service.dart';
+import '../services/api_service.dart';
 
 class FoundItemFormScreen extends StatefulWidget {
   const FoundItemFormScreen({super.key});
@@ -271,7 +273,7 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
         child: DropdownButtonFormField<String>(
           // 1. NEON MENU STYLING
           dropdownColor: const Color(0xFF0E0F10)
-              .withValues(alpha:0.9), // Translucent background
+              .withValues(alpha: 0.9), // Translucent background
           borderRadius: BorderRadius.circular(20),
           iconEnabledColor: accentColor, // Neon arrow color
 
@@ -394,31 +396,65 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
 
   void _handleSubmit() async {
     if (!_formKey.currentState!.validate() || _imageBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Complete all fields and upload an image")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Complete all fields and upload an image")),
+      );
       return;
     }
 
     setState(() => _isSubmitting = true);
 
+    // Geofencing check
     bool inside = await _verifyCampusLocation();
 
     if (!mounted) return;
-    setState(() => _isSubmitting = false);
-
     if (!inside) {
+      setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text("Error: Location outside campus premises!"),
           backgroundColor: Colors.redAccent));
       return;
     }
 
-    // SUCCESS: SHOW THE GLASS ALERT
-    showDialog(
-      context: context,
-      barrierDismissible: false, // User must read and click "Understood"
-      builder: (context) => const HandoverAlert(),
-    );
+    try {
+      // 2. Initialize the service
+      // Assuming ApiService has a static or accessible getToken method
+      final itemApi = ItemApiService(
+        baseUrl: 'http://localhost:8080',
+        getToken: () => ApiService().getToken(),
+      );
+
+      // 3. Prepare data exactly as your backend expects
+      final itemData = {
+        "category": _selectedCategory,
+        "campus_zone": _zoneController.text,
+        "found_at": _selectedDateTime.toUtc().toIso8601String(),
+        "image_url":
+            "uploads/found_item_${DateTime.now().millisecondsSinceEpoch}.jpg",
+      };
+
+      // 4. Call the service
+      await itemApi.reportFoundItem(itemData);
+
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      // SUCCESS: Show the alert
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const HandoverAlert(),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(e.toString()), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
   }
 
   void _showImageSourceOptions() {
@@ -477,18 +513,17 @@ class _HoverContainerState extends State<_HoverContainer> {
             color: Colors.white.withValues(alpha: _isHighlighted ? 0.12 : 0.08),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _isHighlighted 
-                  ? widget.accentColor 
+              color: _isHighlighted
+                  ? widget.accentColor
                   : Colors.white.withValues(alpha: 0.1),
               width: _isHighlighted ? 1.5 : 1.0,
             ),
             boxShadow: [
               if (_isHighlighted)
                 BoxShadow(
-                  color: widget.accentColor.withValues(alpha: 0.15), 
-                  blurRadius: 12, 
-                  spreadRadius: 2
-                )
+                    color: widget.accentColor.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    spreadRadius: 2)
             ],
           ),
           child: widget.child,
