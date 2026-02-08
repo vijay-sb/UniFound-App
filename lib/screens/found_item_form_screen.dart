@@ -372,27 +372,27 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
   }
 
   Widget _locationDropdown() {
-  return _buildNeonDropdown(
-    hint: "Select Location",
-    icon: Icons.location_on_outlined,
-    value: _selectedLocation,
-    items: _locations,
-    onChanged: (v) => setState(() {
-      _selectedLocation = v;
-      if (v != 'Hostel') _selectedHostel = null;
-    }),
-  );
-}
+    return _buildNeonDropdown(
+      hint: "Select Location",
+      icon: Icons.location_on_outlined,
+      value: _selectedLocation,
+      items: _locations,
+      onChanged: (v) => setState(() {
+        _selectedLocation = v;
+        if (v != 'Hostel') _selectedHostel = null;
+      }),
+    );
+  }
 
-Widget _hostelDropdown() {
-  return _buildNeonDropdown(
-    hint: "Select Hostel Name",
-    icon: Icons.hotel_outlined,
-    value: _selectedHostel,
-    items: _hostels,
-    onChanged: (v) => setState(() => _selectedHostel = v),
-  );
-}
+  Widget _hostelDropdown() {
+    return _buildNeonDropdown(
+      hint: "Select Hostel Name",
+      icon: Icons.hotel_outlined,
+      value: _selectedHostel,
+      items: _hostels,
+      onChanged: (v) => setState(() => _selectedHostel = v),
+    );
+  }
 
   // HELPER METHOD FOR UNIFORM NEON STYLING
   Widget _buildNeonDropdown({
@@ -522,8 +522,6 @@ Widget _hostelDropdown() {
     }
 
     try {
-      // 2. Initialize the service
-      // Assuming ApiService has a static or accessible getToken method
       final itemApi = ItemApiService(
         baseUrl: 'http://localhost:8080',
         getToken: () => ApiService().getToken(),
@@ -541,22 +539,31 @@ Widget _hostelDropdown() {
         finalCategory = _customCategoryController.text;
       }
 
-      // 3. Prepare data exactly as your backend expects
+      String? imageKey;
+
+      // 🟢 STEP 1: get upload url
+      if (_imageBytes != null) {
+        final uploadData = await itemApi.getUploadUrl();
+        final uploadUrl = uploadData['upload_url'];
+        imageKey = uploadData['image_key'];
+
+        // 🟢 STEP 2: upload image
+        await itemApi.uploadImageToMinio(uploadUrl, _imageBytes!);
+      }
+
+      // 🟢 STEP 3: send item data
       final itemData = {
         "category": finalCategory,
         "campus_zone": finalLocation,
         "found_at": _selectedDateTime.toUtc().toIso8601String(),
-        "image_url":
-            "uploads/found_item_${DateTime.now().millisecondsSinceEpoch}.jpg",
+        "image_key": imageKey, // IMPORTANT
       };
 
-      // 4. Call the service
       await itemApi.reportFoundItem(itemData);
 
       if (!mounted) return;
       setState(() => _isSubmitting = false);
 
-      // SUCCESS: Show the alert
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -566,8 +573,7 @@ Widget _hostelDropdown() {
       if (mounted) {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(e.toString()), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text(e.toString())),
         );
       }
     }
