@@ -29,16 +29,9 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
   // Inside _BlindFeedScreenState class
   void _loadData() {
     if (widget.apiService != null) {
-      setState(() {
-        // Use the service only if it exists
-        _future = widget.apiService!.fetchDiscoverItems();
-      });
+      _future = widget.apiService!.fetchDiscoverItems();
     } else {
-      // If the service is missing, we fall back to mock data
-      // so you can at least see the UI while fixing the integration.
-      setState(() {
-        _future = Future.value(_mockItems);
-      });
+      _future = Future.value(_mockItems);
       debugPrint("Warning: apiService was null, falling back to mock data.");
     }
   }
@@ -96,10 +89,13 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                       // 2. PROFILE CIRCLE FOR LOGOUT (opens menu)
                       PopupMenuButton<String>(
                         tooltip: 'Profile',
-                        color: const Color(0xFF121212), // dark grey background for menu
+                        color: const Color(
+                            0xFF121212), // dark grey background for menu
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: accentColor.withValues(alpha: 0.18), width: 1.2),
+                          side: BorderSide(
+                              color: accentColor.withValues(alpha: 0.18),
+                              width: 1.2),
                         ),
                         elevation: 8,
                         onSelected: (value) async {
@@ -108,22 +104,33 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                               context: context,
                               builder: (ctx) => AlertDialog(
                                 backgroundColor: const Color(0xFF121212),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                title: Text('Logout', style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
-                                content: const Text('Are you sure you want to logout?', style: TextStyle(color: Colors.white70)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                                title: Text('Logout',
+                                    style: TextStyle(
+                                        color: accentColor,
+                                        fontWeight: FontWeight.bold)),
+                                content: const Text(
+                                    'Are you sure you want to logout?',
+                                    style: TextStyle(color: Colors.white70)),
                                 actions: [
                                   TextButton(
-                                    style: TextButton.styleFrom(foregroundColor: Colors.white),
-                                    onPressed: () => Navigator.of(ctx).pop(false),
+                                    style: TextButton.styleFrom(
+                                        foregroundColor: Colors.white),
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(false),
                                     child: const Text('Cancel'),
                                   ),
                                   TextButton(
                                     style: TextButton.styleFrom(
                                       backgroundColor: accentColor,
                                       foregroundColor: Colors.black,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
                                     ),
-                                    onPressed: () => Navigator.of(ctx).pop(true),
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(true),
                                     child: const Text('Logout'),
                                   ),
                                 ],
@@ -138,7 +145,12 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                         itemBuilder: (context) => [
                           PopupMenuItem(
                             value: 'logout',
-                            child: Row(children: [Icon(Icons.logout, color: accentColor), const SizedBox(width:8), const Text('Logout', style: TextStyle(color: Colors.white))]),
+                            child: Row(children: [
+                              Icon(Icons.logout, color: accentColor),
+                              const SizedBox(width: 8),
+                              const Text('Logout',
+                                  style: TextStyle(color: Colors.white))
+                            ]),
                           ),
                         ],
                         child: Container(
@@ -150,7 +162,8 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                           child: CircleAvatar(
                             radius: 20,
                             backgroundColor: Colors.white12,
-                            child: Icon(Icons.person_outline, color: accentColor),
+                            child:
+                                Icon(Icons.person_outline, color: accentColor),
                           ),
                         ),
                       ),
@@ -168,23 +181,64 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return Center(
-                            child:
-                                CircularProgressIndicator(color: accentColor));
+                          child: CircularProgressIndicator(color: accentColor),
+                        );
                       }
 
                       // 1. ERROR STATE
                       if (snapshot.hasError) {
                         return _ErrorState(
-                            onRetry: () => setState(() => _loadData()));
+                          onRetry: () => setState(() => _loadData()),
+                        );
+                      }
+                      // --- DATA PROCESSING START ---
+
+                      // 1. Filter for status and search query
+                      final rawItems = (snapshot.data ?? []).where((i) {
+                        final matchesStatus =
+                            i.status == 'VERIFIED' || i.status == 'AVAILABLE';
+                        final matchesSearch = i.category
+                                .toLowerCase()
+                                .contains(_searchQuery) ||
+                            i.campusZone.toLowerCase().contains(_searchQuery);
+                        return matchesStatus && matchesSearch;
+                      }).toList();
+
+                      // 2. Group items by [Category + Zone + Date]
+                      final Map<String, List<ItemDto>> groupedMap = {};
+                      for (var item in rawItems) {
+                        // We use the date part only (YYYY-MM-DD) to group items found on the same day
+                        final dateKey =
+                            item.foundAt.toString().split(' ').first;
+                        final groupingKey =
+                            "${item.category.toLowerCase()}_${item.campusZone.toLowerCase()}_$dateKey";
+
+                        groupedMap.putIfAbsent(groupingKey, () => []).add(item);
                       }
 
-                      final items = (snapshot.data ?? [])
-                          .where((i) =>
-                              i.category.toLowerCase().contains(_searchQuery) ||
-                              i.campusZone.toLowerCase().contains(_searchQuery))
-                          .toList();
+                      // 3. Transform groups into a list of display DTOs
+                      final List<ItemDto> items =
+                          groupedMap.values.map((group) {
+                        final firstItem = group.first;
+                        final count = group.length;
 
-                      // 1. EMPTY STATE
+                        return ItemDto(
+                          id: firstItem.id, // Keep the first ID for the key
+                          // Requirement 4: Update text if multiple items exist
+                          category: count > 1
+                              ? "$count ${firstItem.category}s"
+                              : firstItem.category,
+                          campusZone: firstItem.campusZone,
+                          foundAt: firstItem.foundAt,
+                          status: group.any((i) => i.status == 'AVAILABLE')
+                              ? 'AVAILABLE'
+                              : 'VERIFIED', // If any item in group is available, show Available
+                        );
+                      }).toList();
+
+                      // --- DATA PROCESSING END ---
+
+                      // 2. EMPTY STATE
                       if (items.isEmpty) {
                         return const _EmptyState();
                       }
@@ -233,6 +287,9 @@ class _BlindItemCardState extends State<_BlindItemCard> {
 
   @override
   Widget build(BuildContext context) {
+    // Determine if the item can be claimed
+    final bool isAvailable = widget.item.status == 'AVAILABLE';
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -276,8 +333,36 @@ class _BlindItemCardState extends State<_BlindItemCard> {
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.5),
                   ),
-                  const SizedBox(height: 12),
-                  // 5. ICON ON LEFT & CALENDAR ICON
+                  const SizedBox(height: 8),
+                  // STATUS TAG SECTION
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isAvailable
+                          ? Colors.green.withValues(alpha: 0.1)
+                          : Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isAvailable ? Colors.green : Colors.orange,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      isAvailable
+                          ? 'AVAILABLE'
+                          : 'VERIFIED (Wait for item to be available)',
+                      style: TextStyle(
+                        color: isAvailable
+                            ? Colors.greenAccent
+                            : Colors.orangeAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // LOCATION SECTION
                   Row(
                     children: [
                       Icon(Icons.location_on, color: widget.accent, size: 18),
@@ -294,6 +379,7 @@ class _BlindItemCardState extends State<_BlindItemCard> {
                     ],
                   ),
                   const SizedBox(height: 8),
+                  // DATE SECTION
                   Row(
                     children: [
                       Icon(Icons.calendar_today,
@@ -308,33 +394,42 @@ class _BlindItemCardState extends State<_BlindItemCard> {
                     ],
                   ),
                   const Spacer(),
-                  // 3. GLOWING BUTTON (No Sparkle)
+                  // CLAIM BUTTON (Requirement 3: Disabled if Verified)
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
-                        BoxShadow(
-                          color: widget.accent
-                              .withValues(alpha: _isHovered ? 0.6 : 0.2),
-                          blurRadius: _isHovered ? 15 : 5,
-                          spreadRadius: _isHovered ? 2 : 0,
-                        )
+                        if (_isHovered && isAvailable)
+                          BoxShadow(
+                            color: widget.accent.withValues(alpha: 0.6),
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                          )
                       ],
                     ),
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: isAvailable
+                          ? () {
+                              // Action for claiming
+                            }
+                          : null, // Disables button when null
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: widget.accent,
+                        backgroundColor:
+                            isAvailable ? widget.accent : Colors.grey[850],
+                        disabledBackgroundColor: Colors.white10,
                         foregroundColor: Colors.black,
+                        disabledForegroundColor: Colors.white24,
                         minimumSize: const Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      child: const Text('I LOST THIS',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w900, fontSize: 14)),
+                      child: Text(
+                        isAvailable ? 'I LOST THIS' : 'PROCESSING...',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900, fontSize: 14),
+                      ),
                     ),
                   ),
                 ],
@@ -539,17 +634,20 @@ final List<ItemDto> _mockItems = [
     category: 'Wallet',
     campusZone: 'Main Canteen',
     foundAt: DateTime.now().subtract(const Duration(days: 1)),
+    status: 'VERIFIED', // Added status for mock data
   ),
   ItemDto(
     id: '2',
     category: 'ID Card',
     campusZone: 'Library',
     foundAt: DateTime.now().subtract(const Duration(hours: 6)),
+    status: 'VERIFIED',
   ),
   ItemDto(
     id: '3',
     category: 'Laptop',
-    campusZone: 'AB3 – 2nd Floor',
+    campusZone: 'AB 3',
     foundAt: DateTime.now().subtract(const Duration(days: 2)),
+    status: 'VERIFIED',
   ),
 ];
