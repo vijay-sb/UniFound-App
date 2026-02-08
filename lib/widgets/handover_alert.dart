@@ -50,8 +50,7 @@ class HandoverAlert extends StatelessWidget {
           Center(
             child: TextButton(
               onPressed: () {
-                Navigator.pop(context); // Close Alert
-                Navigator.pop(context); // Go back to Blind Feed
+                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
               },
               child: Text(
                 "UNDERSTOOD",

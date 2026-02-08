@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:maps_toolkit/maps_toolkit.dart' as mp;
 import '../widgets/handover_alert.dart';
+import '../services/item_api_service.dart';
+import '../services/api_service.dart';
 
 class FoundItemFormScreen extends StatefulWidget {
   const FoundItemFormScreen({super.key});
@@ -21,10 +23,36 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
   // Data State
   Uint8List? _imageBytes;
   String? _selectedCategory;
+  String? _selectedLocation;
+  String? _selectedHostel;
   final _customCategoryController = TextEditingController();
   final _zoneController = TextEditingController();
   DateTime _selectedDateTime = DateTime.now();
   bool _isSubmitting = false;
+
+  final List<String> _locations = [
+    'AB 1',
+    'AB 2',
+    'AB 3',
+    'AB 4',
+    'Library',
+    'Main canteen',
+    'MBA canteen',
+    'IT canteen',
+    'Ground',
+    'Hostel',
+    'Others'
+  ];
+
+  final List<String> _hostels = [
+    'Mythreyi',
+    'Aditi',
+    'Gargi',
+    'Savitri',
+    'Vasista',
+    'Agasthya',
+    'Gowthama'
+  ];
 
   final List<String> _categories = [
     'Wallet',
@@ -217,8 +245,19 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
                         _customCategoryController, "Category Name", Icons.edit),
                   ],
                   const SizedBox(height: 16),
-                  _hoverField(_zoneController, "Campus Zone",
-                      Icons.location_on_outlined),
+                  // --- NEW LOCATION DROPDOWN ---
+                  _locationDropdown(),
+                  // --- CONDITIONAL HOSTEL DROPDOWN ---
+                  if (_selectedLocation == 'Hostel') ...[
+                    const SizedBox(height: 16),
+                    _hostelDropdown(),
+                  ],
+                  // --- CONDITIONAL OTHERS FIELD ---
+                  if (_selectedLocation == 'Others') ...[
+                    const SizedBox(height: 16),
+                    _hoverField(_zoneController, "Specific Location",
+                        Icons.location_on),
+                  ],
                   const SizedBox(height: 16),
                   _dateTimeButton(),
                   const SizedBox(height: 32),
@@ -271,7 +310,7 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
         child: DropdownButtonFormField<String>(
           // 1. NEON MENU STYLING
           dropdownColor: const Color(0xFF0E0F10)
-              .withValues(alpha:0.9), // Translucent background
+              .withValues(alpha: 0.9), // Translucent background
           borderRadius: BorderRadius.circular(20),
           iconEnabledColor: accentColor, // Neon arrow color
 
@@ -324,6 +363,73 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
           decoration: InputDecoration(
             prefixIcon:
                 Icon(Icons.category_outlined, color: accentColor, size: 20),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _locationDropdown() {
+    return _buildNeonDropdown(
+      hint: "Select Location",
+      icon: Icons.location_on_outlined,
+      value: _selectedLocation,
+      items: _locations,
+      onChanged: (v) => setState(() {
+        _selectedLocation = v;
+        if (v != 'Hostel') _selectedHostel = null;
+      }),
+    );
+  }
+
+  Widget _hostelDropdown() {
+    return _buildNeonDropdown(
+      hint: "Select Hostel Name",
+      icon: Icons.hotel_outlined,
+      value: _selectedHostel,
+      items: _hostels,
+      onChanged: (v) => setState(() => _selectedHostel = v),
+    );
+  }
+
+  // HELPER METHOD FOR UNIFORM NEON STYLING
+  Widget _buildNeonDropdown({
+    required String hint,
+    required IconData icon,
+    required String? value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return _HoverContainer(
+      accentColor: accentColor,
+      child: DropdownButtonHideUnderline(
+        child: DropdownButtonFormField<String>(
+          dropdownColor: const Color(0xFF0E0F10).withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(20),
+          iconEnabledColor: accentColor,
+          hint: Text(hint,
+              style: const TextStyle(color: Colors.white24, fontSize: 14)),
+          initialValue: value,
+          items: items.map((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(
+                item,
+                style: TextStyle(
+                  color: value == item ? accentColor : Colors.white,
+                  fontSize: 15,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
+          validator: (v) => v == null ? "Required" : null,
+          style:
+              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, color: accentColor, size: 20),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 12),
           ),
@@ -394,31 +500,83 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
 
   void _handleSubmit() async {
     if (!_formKey.currentState!.validate() || _imageBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Complete all fields and upload an image")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Complete all fields and upload an image")),
+      );
       return;
     }
 
     setState(() => _isSubmitting = true);
 
+    // Geofencing check
     bool inside = await _verifyCampusLocation();
 
     if (!mounted) return;
-    setState(() => _isSubmitting = false);
-
     if (!inside) {
+      setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text("Error: Location outside campus premises!"),
           backgroundColor: Colors.redAccent));
       return;
     }
 
-    // SUCCESS: SHOW THE GLASS ALERT
-    showDialog(
-      context: context,
-      barrierDismissible: false, // User must read and click "Understood"
-      builder: (context) => const HandoverAlert(),
-    );
+    try {
+      final itemApi = ItemApiService(
+        baseUrl: 'http://localhost:8080',
+        getToken: () => ApiService().getToken(),
+      );
+
+      String finalLocation = _selectedLocation ?? "";
+      if (_selectedLocation == 'Hostel' && _selectedHostel != null) {
+        finalLocation = "Hostel: $_selectedHostel";
+      } else if (_selectedLocation == 'Others') {
+        finalLocation = _zoneController.text;
+      }
+
+      String finalCategory = _selectedCategory ?? "";
+      if (_selectedCategory == 'Others') {
+        finalCategory = _customCategoryController.text;
+      }
+
+      String? imageKey;
+
+      // 🟢 STEP 1: get upload url
+      if (_imageBytes != null) {
+        final uploadData = await itemApi.getUploadUrl();
+        final uploadUrl = uploadData['upload_url'];
+        imageKey = uploadData['image_key'];
+
+        // 🟢 STEP 2: upload image
+        await itemApi.uploadImageToMinio(uploadUrl, _imageBytes!);
+      }
+
+      // 🟢 STEP 3: send item data
+      final itemData = {
+        "category": finalCategory,
+        "campus_zone": finalLocation,
+        "found_at": _selectedDateTime.toUtc().toIso8601String(),
+        "image_key": imageKey, // IMPORTANT
+      };
+
+      await itemApi.reportFoundItem(itemData);
+
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const HandoverAlert(),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
   }
 
   void _showImageSourceOptions() {
@@ -477,18 +635,17 @@ class _HoverContainerState extends State<_HoverContainer> {
             color: Colors.white.withValues(alpha: _isHighlighted ? 0.12 : 0.08),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _isHighlighted 
-                  ? widget.accentColor 
+              color: _isHighlighted
+                  ? widget.accentColor
                   : Colors.white.withValues(alpha: 0.1),
               width: _isHighlighted ? 1.5 : 1.0,
             ),
             boxShadow: [
               if (_isHighlighted)
                 BoxShadow(
-                  color: widget.accentColor.withValues(alpha: 0.15), 
-                  blurRadius: 12, 
-                  spreadRadius: 2
-                )
+                    color: widget.accentColor.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    spreadRadius: 2)
             ],
           ),
           child: widget.child,

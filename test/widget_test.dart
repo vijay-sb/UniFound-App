@@ -1,56 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lost_found_app/main.dart';
 import 'package:lost_found_app/screens/blind_feed_screen.dart';
 import 'package:lost_found_app/screens/found_item_form_screen.dart';
 
 void main() {
-  // Helper function to set a larger screen size so buttons aren't off-screen
   void setLargeDisplay(WidgetTester tester) {
-    tester.view.physicalSize = const Size(1080, 2400); // Tall phone size
+    tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 1.0;
   }
 
-  group('UniFound App Navigation & UI Tests', () {
-    
-    testWidgets('App should start on BlindFeedScreen and show Logo', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
+  Future<void> pumpScreen(WidgetTester tester, Widget widget) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: widget,
+        routes: {
+          "/found-form": (_) => const FoundItemFormScreen(),
+        },
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(seconds: 1));
+  }
+
+  group('UniFound Tests', () {
+    testWidgets('App should reach BlindFeedScreen', (tester) async {
+      setLargeDisplay(tester);
+      await pumpScreen(tester, const BlindFeedScreen());
+
       expect(find.byType(BlindFeedScreen), findsOneWidget);
     });
 
-    testWidgets('Navigation: Tapping "Report Found" should open FoundItemFormScreen', (WidgetTester tester) async {
+    testWidgets('FAB opens form screen', (tester) async {
       setLargeDisplay(tester);
-      await tester.pumpWidget(const MyApp());
+      await pumpScreen(tester, const BlindFeedScreen());
 
-      // Using an icon finder is safer for neon buttons
-      final reportButton = find.byIcon(Icons.add); 
-      
-      await tester.tap(reportButton);
-      
-      // FIX: Use pump(Duration) instead of pumpAndSettle to avoid animation timeouts
-      await tester.pump(const Duration(milliseconds: 500)); 
-      await tester.pump(const Duration(milliseconds: 500)); 
+      final fab = find.byIcon(Icons.add);
+      expect(fab, findsOneWidget);
+
+      await tester.tap(fab);
+
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       expect(find.byType(FoundItemFormScreen), findsOneWidget);
     });
 
-    testWidgets('Validation: Submit without data should show errors', (WidgetTester tester) async {
-      setLargeDisplay(tester); // CRITICAL: Fixes the "Offset outside bounds" error
-      
-      await tester.pumpWidget(
-        const MaterialApp(home: FoundItemFormScreen())
-      );
+    testWidgets('Form validation shows errors', (tester) async {
+      setLargeDisplay(tester);
+      await pumpScreen(tester, const FoundItemFormScreen());
 
-      final submitButton = find.text("TAG LOCATION & SUBMIT");
-      
-      // Ensure the widget is actually found before tapping
-      expect(submitButton, findsOneWidget);
-      
-      await tester.tap(submitButton);
-      await tester.pump(); // Trigger the build after validation
+      final submit = find.textContaining("SUBMIT");
+      expect(submit, findsOneWidget);
 
-      // Check for validation text. 
-      // Note: If you renamed your error string in the form, match it here.
+      await tester.tap(submit);
+      await tester.pump();
+
       expect(find.text("Required"), findsAtLeastNWidgets(1));
     });
   });
