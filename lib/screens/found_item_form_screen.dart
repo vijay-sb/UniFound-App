@@ -23,10 +23,36 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
   // Data State
   Uint8List? _imageBytes;
   String? _selectedCategory;
+  String? _selectedLocation;
+  String? _selectedHostel;
   final _customCategoryController = TextEditingController();
   final _zoneController = TextEditingController();
   DateTime _selectedDateTime = DateTime.now();
   bool _isSubmitting = false;
+
+  final List<String> _locations = [
+    'AB 1',
+    'AB 2',
+    'AB 3',
+    'AB 4',
+    'Library',
+    'Main canteen',
+    'MBA canteen',
+    'IT canteen',
+    'Ground',
+    'Hostel',
+    'Others'
+  ];
+
+  final List<String> _hostels = [
+    'Mythreyi',
+    'Aditi',
+    'Gargi',
+    'Savitri',
+    'Vasista',
+    'Agasthya',
+    'Gowthama'
+  ];
 
   final List<String> _categories = [
     'Wallet',
@@ -219,8 +245,19 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
                         _customCategoryController, "Category Name", Icons.edit),
                   ],
                   const SizedBox(height: 16),
-                  _hoverField(_zoneController, "Campus Zone",
-                      Icons.location_on_outlined),
+                  // --- NEW LOCATION DROPDOWN ---
+                  _locationDropdown(),
+                  // --- CONDITIONAL HOSTEL DROPDOWN ---
+                  if (_selectedLocation == 'Hostel') ...[
+                    const SizedBox(height: 16),
+                    _hostelDropdown(),
+                  ],
+                  // --- CONDITIONAL OTHERS FIELD ---
+                  if (_selectedLocation == 'Others') ...[
+                    const SizedBox(height: 16),
+                    _hoverField(_zoneController, "Specific Location",
+                        Icons.location_on),
+                  ],
                   const SizedBox(height: 16),
                   _dateTimeButton(),
                   const SizedBox(height: 32),
@@ -334,6 +371,73 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
     );
   }
 
+  Widget _locationDropdown() {
+  return _buildNeonDropdown(
+    hint: "Select Location",
+    icon: Icons.location_on_outlined,
+    value: _selectedLocation,
+    items: _locations,
+    onChanged: (v) => setState(() {
+      _selectedLocation = v;
+      if (v != 'Hostel') _selectedHostel = null;
+    }),
+  );
+}
+
+Widget _hostelDropdown() {
+  return _buildNeonDropdown(
+    hint: "Select Hostel Name",
+    icon: Icons.hotel_outlined,
+    value: _selectedHostel,
+    items: _hostels,
+    onChanged: (v) => setState(() => _selectedHostel = v),
+  );
+}
+
+  // HELPER METHOD FOR UNIFORM NEON STYLING
+  Widget _buildNeonDropdown({
+    required String hint,
+    required IconData icon,
+    required String? value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return _HoverContainer(
+      accentColor: accentColor,
+      child: DropdownButtonHideUnderline(
+        child: DropdownButtonFormField<String>(
+          dropdownColor: const Color(0xFF0E0F10).withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(20),
+          iconEnabledColor: accentColor,
+          hint: Text(hint,
+              style: const TextStyle(color: Colors.white24, fontSize: 14)),
+          initialValue: value,
+          items: items.map((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(
+                item,
+                style: TextStyle(
+                  color: value == item ? accentColor : Colors.white,
+                  fontSize: 15,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
+          validator: (v) => v == null ? "Required" : null,
+          style:
+              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, color: accentColor, size: 20),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _hoverField(TextEditingController ctrl, String hint, IconData icon) {
     return _HoverContainer(
       accentColor: accentColor,
@@ -425,10 +529,22 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
         getToken: () => ApiService().getToken(),
       );
 
+      String finalLocation = _selectedLocation ?? "";
+      if (_selectedLocation == 'Hostel' && _selectedHostel != null) {
+        finalLocation = "Hostel: $_selectedHostel";
+      } else if (_selectedLocation == 'Others') {
+        finalLocation = _zoneController.text;
+      }
+
+      String finalCategory = _selectedCategory ?? "";
+      if (_selectedCategory == 'Others') {
+        finalCategory = _customCategoryController.text;
+      }
+
       // 3. Prepare data exactly as your backend expects
       final itemData = {
-        "category": _selectedCategory,
-        "campus_zone": _zoneController.text,
+        "category": finalCategory,
+        "campus_zone": finalLocation,
         "found_at": _selectedDateTime.toUtc().toIso8601String(),
         "image_url":
             "uploads/found_item_${DateTime.now().millisecondsSinceEpoch}.jpg",
