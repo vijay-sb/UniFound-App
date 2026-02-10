@@ -33,17 +33,7 @@ class HandoverAlert extends StatelessWidget {
               "Please hand over the found item to the respective office personnel listed below during working hours. Ensure the item is delivered safely.",
               style: TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
             ),
-            const SizedBox(height: 20),
-            _adminRow("Hostel", "Respective Wardens"),
-            _adminRow("AB1", "Student Welfare Office"),
-            _adminRow("AB3", "CSE Dept. Office"),
-            _adminRow("Library", "Librarian"),
-            _adminRow("Grounds", "Physical Education Dept."),
-            const SizedBox(height: 20),
-            const Text(
-              "Note: You can handover the item to the admin nearest to your current location.",
-              style: TextStyle(color: Colors.white70, fontSize: 12, fontStyle: FontStyle.italic),
-            ),
+            
           ],
         ),
         actions: [
