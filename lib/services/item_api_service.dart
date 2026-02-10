@@ -20,7 +20,7 @@ class ItemApiService {
     final token = await getToken();
 
     final response = await http.get(
-      Uri.parse('$baseUrl/api/items/discover'),
+      Uri.parse('$baseUrl/items/discover'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -83,7 +83,6 @@ class ItemApiService {
     return decoded["image_key"]; // this is the UploadThing URL
   }
 
-
   /* ───────────── GET UPLOAD URL ───────────── */
 
   // Future<Map<String, dynamic>> getUploadUrl() async {
@@ -130,6 +129,4 @@ class ItemApiService {
 // ...existing code...
 
   /* ───────────── HOSTNAME FIX ───────────── */
-
 }
-

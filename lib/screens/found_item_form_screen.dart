@@ -2,9 +2,11 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 // import 'package:geolocator/geolocator.dart';
 import 'package:lost_found_app/services/supabase_upload_service.dart';
+import 'package:maps_toolkit/maps_toolkit.dart' as mp;
 // import 'package:maps_toolkit/maps_toolkit.dart' as mp;
 import '../widgets/handover_alert.dart';
 import '../services/item_api_service.dart';
@@ -71,34 +73,34 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
   ];
 
   // Geofencing logic (Frontend Gatekeeper)
-  // Future<bool> _verifyCampusLocation() async {
-  //   bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  //   if (!serviceEnabled) return false;
+  Future<bool> _verifyCampusLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
 
-  //   LocationPermission permission = await Geolocator.checkPermission();
-  //   if (permission == LocationPermission.denied) {
-  //     permission = await Geolocator.requestPermission();
-  //     if (permission == LocationPermission.denied) return false;
-  //   }
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return false;
+    }
 
-  //   Position position = await Geolocator.getCurrentPosition();
-  //   debugPrint(
-  //       "DEBUG: Your current Lat: ${position.latitude}, Lng: ${position.longitude}");
+    Position position = await Geolocator.getCurrentPosition();
+    debugPrint(
+        "DEBUG: Your current Lat: ${position.latitude}, Lng: ${position.longitude}");
 
-  //   // RECTIFIED: Centered on your actual reported coordinates
-  //   final campusPolygon = [
-  //     mp.LatLng(-85.0, -179.9), // SW
-  //     mp.LatLng(85.0, -179.9), // NW
-  //     mp.LatLng(85.0, 179.9), // NE
-  //     mp.LatLng(-85.0, 179.9), // SE
-  //   ];
+    // RECTIFIED: Centered on your actual reported coordinates
+    final campusPolygon = [
+      mp.LatLng(-85.0, -179.9), // SW
+      mp.LatLng(85.0, -179.9), // NW
+      mp.LatLng(85.0, 179.9), // NE
+      mp.LatLng(-85.0, 179.9), // SE
+    ];
 
-  //   return mp.PolygonUtil.containsLocation(
-  //     mp.LatLng(position.latitude, position.longitude),
-  //     campusPolygon,
-  //     false,
-  //   );
-  // }
+    return mp.PolygonUtil.containsLocation(
+      mp.LatLng(position.latitude, position.longitude),
+      campusPolygon,
+      false,
+    );
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     final ImagePicker picker = ImagePicker();
@@ -499,7 +501,7 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
     );
   }
 
-void _handleSubmit() async {
+  void _handleSubmit() async {
     if (!_formKey.currentState!.validate() || _imageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -513,7 +515,7 @@ void _handleSubmit() async {
 
     // TEMPORARY BYPASS FOR TESTING
     // const bool inside = true;
-
+      final bool inside = await _verifyCampusLocation();
     final itemApi = ItemApiService(
       baseUrl: 'http://localhost:8080',
       getToken: () => ApiService().getToken(),
@@ -525,19 +527,18 @@ void _handleSubmit() async {
       // 🟢 STEP 1: upload image via backend
       imageKey = await SupabaseUploadService.uploadImage(_imageBytes!);
 
-
       if (!mounted) return;
 
-      // if (!inside) {
-      //   setState(() => _isSubmitting = false);
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     const SnackBar(
-      //       content: Text("Error: Location outside campus premises!"),
-      //       backgroundColor: Colors.redAccent,
-      //     ),
-      //   );
-      //   return;
-      // }
+      if (!inside) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Error: Location outside campus premises!"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
 
       // 🟢 STEP 2: prepare location
       String finalLocation = _selectedLocation ?? "";
@@ -580,7 +581,6 @@ void _handleSubmit() async {
       }
     }
   }
-
 
   void _showImageSourceOptions() {
     showModalBottomSheet(
