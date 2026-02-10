@@ -272,7 +272,175 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
 
 /* ───────────────── GLASS ITEM CARD ───────────────── */
 
+class _BlindItemCard extends StatefulWidget {
+  final ItemDto item;
+  final Color accent;
 
+  const _BlindItemCard({required this.item, required this.accent});
+
+  @override
+  State<_BlindItemCard> createState() => _BlindItemCardState();
+}
+
+class _BlindItemCardState extends State<_BlindItemCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // Determine if the item can be claimed
+    final bool isAvailable = widget.item.status == 'AVAILABLE';
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            if (_isHovered)
+              BoxShadow(
+                color: widget.accent.withValues(alpha: 0.15),
+                blurRadius: 30,
+                spreadRadius: 5,
+              )
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: _isHovered
+                      ? widget.accent
+                      : widget.accent.withValues(alpha: 0.3),
+                  width: _isHovered ? 2 : 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.item.category.toUpperCase(),
+                    style: TextStyle(
+                        color: widget.accent,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5),
+                  ),
+                  const SizedBox(height: 8),
+                  // STATUS TAG SECTION
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isAvailable
+                          ? Colors.green.withValues(alpha: 0.1)
+                          : Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isAvailable ? Colors.green : Colors.orange,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      isAvailable
+                          ? 'AVAILABLE'
+                          : 'VERIFIED (Wait for item to be available)',
+                      style: TextStyle(
+                        color: isAvailable
+                            ? Colors.greenAccent
+                            : Colors.orangeAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // LOCATION SECTION
+                  Row(
+                    children: [
+                      Icon(Icons.location_on, color: widget.accent, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          widget.item.campusZone,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // DATE SECTION
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today,
+                          color: Colors.white.withValues(alpha: 0.5), size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Found: ${widget.item.foundAt.toString().split(' ').first}',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 13),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  // CLAIM BUTTON (Requirement 3: Disabled if Verified)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        if (_isHovered && isAvailable)
+                          BoxShadow(
+                            color: widget.accent.withValues(alpha: 0.6),
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                          )
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: isAvailable
+                          ? () {
+                              // Action for claiming
+                            }
+                          : null, // Disables button when null
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            isAvailable ? widget.accent : Colors.grey[850],
+                        disabledBackgroundColor: Colors.white10,
+                        foregroundColor: Colors.black,
+                        disabledForegroundColor: Colors.white24,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        isAvailable ? 'I LOST THIS' : 'PROCESSING...',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900, fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /* ───────────────── ENHANCED BACKGROUND ───────────────── */
 
