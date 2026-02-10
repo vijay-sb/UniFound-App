@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/blind_feed_screen.dart';
 import 'screens/found_item_form_screen.dart';
 import 'screens/login_screen.dart';
@@ -6,7 +7,12 @@ import 'services/api_service.dart';
 import 'services/item_api_service.dart';
 import 'constants.dart';
 
-void main() {
+Future<void> main() async {
+  await Supabase.initialize(
+  url: 'https://vxjbrldfgvndzoraqmhf.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4amJybGRmZ3ZuZHpvcmFxbWhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NDE0NzksImV4cCI6MjA4NjIxNzQ3OX0.tPzSxlMTfGiF1kpMfWPScJgWXKkY3dhRjUJikPE-w88',
+);
+
   runApp(const MyApp());
 }
 
