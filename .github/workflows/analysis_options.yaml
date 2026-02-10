@@ -1,0 +1,5 @@
+analyzer:
+  errors:
+    deprecated_member_use: ignore
+    constant_identifier_names: ignore
+    depend_on_referenced_packages: ignore
