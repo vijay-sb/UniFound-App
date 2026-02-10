@@ -102,19 +102,7 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
     );
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: source);
-
-    if (image != null) {
-      final bytes = await image.readAsBytes();
-      if (!mounted) return;
-      setState(() {
-        _imageBytes = bytes;
-      });
-      Navigator.pop(context);
-    }
-  }
+  
 
   Future<void> _pickDateTime() async {
     final DateTime? date = await showDatePicker(
