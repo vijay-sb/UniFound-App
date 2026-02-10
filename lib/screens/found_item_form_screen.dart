@@ -249,22 +249,7 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
                   ],
                   const SizedBox(height: 16),
                   // --- NEW LOCATION DROPDOWN ---
-                  _locationDropdown(),
-                  // --- CONDITIONAL HOSTEL DROPDOWN ---
-                  if (_selectedLocation == 'Hostel') ...[
-                    const SizedBox(height: 16),
-                    _hostelDropdown(),
-                  ],
-                  // --- CONDITIONAL OTHERS FIELD ---
-                  if (_selectedLocation == 'Others') ...[
-                    const SizedBox(height: 16),
-                    _hoverField(_zoneController, "Specific Location",
-                        Icons.location_on),
-                  ],
-                  const SizedBox(height: 16),
-                  _dateTimeButton(),
-                  const SizedBox(height: 32),
-                  _submitButton(),
+                  
                 ],
               ),
             ),
