@@ -579,7 +579,28 @@ class _StyledSearchBar extends StatelessWidget {
 
 /* ───────────────── STATES ───────────────── */
 
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
 
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off,
+              size: 80, color: const Color(0xFF9CFF00).withValues(alpha: 0.3)),
+          const SizedBox(height: 16),
+          const Text(
+            'No lost items found',
+            style: TextStyle(
+                color: Colors.white54, fontSize: 16, letterSpacing: 1.1),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _ErrorState extends StatelessWidget {
   final VoidCallback onRetry;
