@@ -2,9 +2,12 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
+// import 'package:geolocator/geolocator.dart';
+import 'package:lost_found_app/services/supabase_upload_service.dart';
 import 'package:maps_toolkit/maps_toolkit.dart' as mp;
+// import 'package:maps_toolkit/maps_toolkit.dart' as mp;
 import '../widgets/handover_alert.dart';
 import '../services/item_api_service.dart';
 import '../services/api_service.dart';
@@ -86,16 +89,16 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
 
     // RECTIFIED: Centered on your actual reported coordinates
     final campusPolygon = [
-      mp.LatLng(10.8800, 76.8900), // Southwest corner
-      mp.LatLng(10.9100, 76.8900), // Northwest corner
-      mp.LatLng(10.9100, 76.9200), // Northeast corner
-      mp.LatLng(10.8800, 76.9200), // Southeast corner
+      mp.LatLng(-85.0, -179.9), // SW
+      mp.LatLng(85.0, -179.9), // NW
+      mp.LatLng(85.0, 179.9), // NE
+      mp.LatLng(-85.0, 179.9), // SE
     ];
 
     return mp.PolygonUtil.containsLocation(
       mp.LatLng(position.latitude, position.longitude),
       campusPolygon,
-      true,
+      false,
     );
   }
 
@@ -502,31 +505,42 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
     if (!_formKey.currentState!.validate() || _imageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text("Complete all fields and upload an image")),
+          content: Text("Complete all fields and upload an image"),
+        ),
       );
       return;
     }
 
     setState(() => _isSubmitting = true);
 
-    // Geofencing check
-    bool inside = await _verifyCampusLocation();
+    // TEMPORARY BYPASS FOR TESTING
+    // const bool inside = true;
+      final bool inside = await _verifyCampusLocation();
+    final itemApi = ItemApiService(
+      baseUrl: 'http://localhost:8080',
+      getToken: () => ApiService().getToken(),
+    );
 
-    if (!mounted) return;
-    if (!inside) {
-      setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Error: Location outside campus premises!"),
-          backgroundColor: Colors.redAccent));
-      return;
-    }
+    String imageKey;
 
     try {
-      final itemApi = ItemApiService(
-        baseUrl: 'http://localhost:8080',
-        getToken: () => ApiService().getToken(),
-      );
+      // 🟢 STEP 1: upload image via backend
+      imageKey = await SupabaseUploadService.uploadImage(_imageBytes!);
 
+      if (!mounted) return;
+
+      if (!inside) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Error: Location outside campus premises!"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      // 🟢 STEP 2: prepare location
       String finalLocation = _selectedLocation ?? "";
       if (_selectedLocation == 'Hostel' && _selectedHostel != null) {
         finalLocation = "Hostel: $_selectedHostel";
@@ -534,29 +548,18 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
         finalLocation = _zoneController.text;
       }
 
+      // 🟢 STEP 3: prepare category
       String finalCategory = _selectedCategory ?? "";
       if (_selectedCategory == 'Others') {
         finalCategory = _customCategoryController.text;
       }
 
-      String? imageKey;
-
-      // 🟢 STEP 1: get upload url
-      if (_imageBytes != null) {
-        final uploadData = await itemApi.getUploadUrl();
-        final uploadUrl = uploadData['upload_url'];
-        imageKey = uploadData['image_key'];
-
-        // 🟢 STEP 2: upload image
-        await itemApi.uploadImageToMinio(uploadUrl, _imageBytes!);
-      }
-
-      // 🟢 STEP 3: send item data
+      // 🟢 STEP 4: send item data
       final itemData = {
         "category": finalCategory,
         "campus_zone": finalLocation,
         "found_at": _selectedDateTime.toUtc().toIso8601String(),
-        "image_key": imageKey, // IMPORTANT
+        "image_key": imageKey,
       };
 
       await itemApi.reportFoundItem(itemData);

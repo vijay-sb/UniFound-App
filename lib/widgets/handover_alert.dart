@@ -50,13 +50,19 @@ class HandoverAlert extends StatelessWidget {
           Center(
             child: TextButton(
               onPressed: () {
-                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                Navigator.of(context, rootNavigator: true)
+                    .pushNamedAndRemoveUntil('/home', (route) => false);
               },
               child: Text(
                 "UNDERSTOOD",
-                style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(
+                  color: accentColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
+
           ),
         ],
       ),
