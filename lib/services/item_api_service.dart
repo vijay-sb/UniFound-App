@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -81,6 +80,31 @@ class ItemApiService {
 
     final decoded = json.decode(responseBody);
     return decoded["image_key"]; // this is the UploadThing URL
+  }
+
+  // Inside services/item_api_service.dart
+
+  Future<List<ItemDto>> fetchMyReportedItems() async {
+    // Assuming you store your JWT in SharedPreferences or a SecureStore
+    final String? token = await getToken();
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/items/my'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token', // The Go middleware needs this!
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> jsonData = jsonDecode(response.body);
+      return jsonData.map((item) => ItemDto.fromJson(item)).toList();
+    } else if (response.statusCode == 401) {
+      // Handle unauthorized - maybe trigger logout
+      throw Exception("Unauthorized: Please login again.");
+    } else {
+      throw Exception("Server error while fetching your reports.");
+    }
   }
 
   /* ───────────── GET UPLOAD URL ───────────── */

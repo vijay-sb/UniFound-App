@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/item_dto.dart';
 import '../services/item_api_service.dart';
+import 'my_reports_screen.dart';
 
 class BlindFeedScreen extends StatefulWidget {
   final ItemApiService? apiService;
@@ -99,7 +100,17 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                         ),
                         elevation: 8,
                         onSelected: (value) async {
-                          if (value == 'logout') {
+                          if (value == 'reports') {
+                            // Navigate to your new screen (we will create this next)
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MyReportsScreen(
+                                  apiService: widget.apiService,
+                                ),
+                              ),
+                            );
+                          } else if (value == 'logout') {
                             final confirmed = await showDialog<bool>(
                               context: context,
                               builder: (ctx) => AlertDialog(
@@ -143,6 +154,15 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                           }
                         },
                         itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'reports',
+                            child: Row(children: [
+                              Icon(Icons.history, color: accentColor),
+                              const SizedBox(width: 8),
+                              const Text('My Reports',
+                                  style: TextStyle(color: Colors.white))
+                            ]),
+                          ),
                           PopupMenuItem(
                             value: 'logout',
                             child: Row(children: [
