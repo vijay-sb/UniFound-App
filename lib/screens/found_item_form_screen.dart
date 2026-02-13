@@ -88,11 +88,25 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
         "DEBUG: Your current Lat: ${position.latitude}, Lng: ${position.longitude}");
 
     // RECTIFIED: Centered on your actual reported coordinates
-    final campusPolygon = [
-      mp.LatLng(-85.0, -179.9), // SW
-      mp.LatLng(85.0, -179.9), // NW
-      mp.LatLng(85.0, 179.9), // NE
-      mp.LatLng(-85.0, 179.9), // SE
+    // final List<mp.LatLng> campusPolygon = [
+    //   mp.LatLng(10.896635238632442, 76.90052261537556),
+    //   mp.LatLng(10.898029030766779, 76.89255827603017),
+    //   mp.LatLng(10.903991290080896, 76.89038976779261),
+    //   mp.LatLng(10.909759855786632, 76.8936228164381),
+    //   mp.LatLng(10.912315023616713, 76.90154772836053),
+    //   mp.LatLng(10.91177302015467, 76.90600302710453),
+    //   mp.LatLng(10.905810916850072, 76.90797439822961),
+    //   mp.LatLng(10.899384100193032, 76.90927550317173),
+    //   mp.LatLng(10.896557805544973, 76.9046624947394),
+    //   mp.LatLng(10.896596522091784, 76.90040433310793), // Closing point
+    // ];
+
+    final List<mp.LatLng> campusPolygon = [
+      mp.LatLng(10.912112946556391, 76.88979321694296), // Top-Left
+      mp.LatLng(10.88338758551069, 76.88979321694296), // Bottom-Left
+      mp.LatLng(10.88338758551069, 76.9157334428773), // Bottom-Right
+      mp.LatLng(10.912112946556391, 76.9157334428773), // Top-Right
+      mp.LatLng(10.912112946556391, 76.88979321694296), // Closing point (same as first)
     ];
 
     return mp.PolygonUtil.containsLocation(
