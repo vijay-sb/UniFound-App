@@ -106,7 +106,8 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
       mp.LatLng(10.88338758551069, 76.88979321694296), // Bottom-Left
       mp.LatLng(10.88338758551069, 76.9157334428773), // Bottom-Right
       mp.LatLng(10.912112946556391, 76.9157334428773), // Top-Right
-      mp.LatLng(10.912112946556391, 76.88979321694296), // Closing point (same as first)
+      mp.LatLng(10.912112946556391,
+          76.88979321694296), // Closing point (same as first)
     ];
 
     return mp.PolygonUtil.containsLocation(
@@ -325,6 +326,7 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
       accentColor: accentColor,
       child: DropdownButtonHideUnderline(
         child: DropdownButtonFormField<String>(
+          isExpanded: true,
           // 1. NEON MENU STYLING
           dropdownColor: const Color(0xFF0E0F10)
               .withValues(alpha: 0.9), // Translucent background
@@ -529,7 +531,7 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
 
     // TEMPORARY BYPASS FOR TESTING
     // const bool inside = true;
-      final bool inside = await _verifyCampusLocation();
+    final bool inside = await _verifyCampusLocation();
     final itemApi = ItemApiService(
       baseUrl: 'http://localhost:8080',
       getToken: () => ApiService().getToken(),

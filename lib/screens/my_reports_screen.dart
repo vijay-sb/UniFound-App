@@ -232,11 +232,14 @@ class _ReportItemCardState extends State<_ReportItemCard> {
                       Icon(Icons.calendar_today,
                           color: Colors.white.withValues(alpha: 0.5), size: 16),
                       const SizedBox(width: 8),
-                      Text(
-                        'Reported on: ${widget.item.foundAt.toString().split(' ').first}',
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5),
-                            fontSize: 13),
+                      Flexible(
+                        child: Text(
+                          'Reported on: ${widget.item.foundAt.toString().split(' ').first}',
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
