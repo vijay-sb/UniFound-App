@@ -46,7 +46,7 @@ void main() {
         makeItem(id: '3', category: 'Phone', status: 'AVAILABLE'),
       ];
 
-      final searchQuery = 'wal';
+      const searchQuery = 'wal';
       final filtered = items.where((i) {
         final matchesStatus = i.status == 'VERIFIED' || i.status == 'AVAILABLE';
         final matchesSearch = i.category.toLowerCase().contains(searchQuery) ||
@@ -65,7 +65,7 @@ void main() {
         makeItem(id: '3', campusZone: 'AB 3', status: 'AVAILABLE'),
       ];
 
-      final searchQuery = 'lib';
+      const searchQuery = 'lib';
       final filtered = items.where((i) {
         final matchesStatus = i.status == 'VERIFIED' || i.status == 'AVAILABLE';
         final matchesSearch = i.category.toLowerCase().contains(searchQuery) ||
@@ -84,7 +84,7 @@ void main() {
         makeItem(id: '3', status: 'REPORTED'),
       ];
 
-      final searchQuery = '';
+      const searchQuery = '';
       final filtered = items.where((i) {
         final matchesStatus = i.status == 'VERIFIED' || i.status == 'AVAILABLE';
         final matchesSearch = i.category.toLowerCase().contains(searchQuery) ||
