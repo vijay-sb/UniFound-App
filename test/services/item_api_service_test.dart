@@ -196,6 +196,147 @@ void main() {
     });
   });
 
+  group('ItemApiService - fetchItemQuestions', () {
+    test('should return list of QuestionModel on 200', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.url.toString(),
+            '$testBaseUrl/items/test-item-id/questions');
+        expect(request.headers['Authorization'], 'Bearer $testToken');
+
+        return http.Response(
+          jsonEncode({
+            'item_id': 'test-item-id',
+            'questions': [
+              {
+                'question': 'What color is the item?',
+                'options': ['Red', 'Blue', 'Black', 'Green'],
+              },
+              {
+                'question': 'What brand is it?',
+                'options': ['Nike', 'Adidas', 'Puma', 'Reebok'],
+              },
+            ],
+          }),
+          200,
+        );
+      });
+
+      final response = await mockClient.get(
+        Uri.parse('$testBaseUrl/items/test-item-id/questions'),
+        headers: {'Authorization': 'Bearer $testToken'},
+      );
+
+      expect(response.statusCode, 200);
+
+      final data = json.decode(response.body);
+      final List questionsJson = data['questions'];
+      expect(questionsJson.length, 2);
+      expect(questionsJson[0]['question'], 'What color is the item?');
+      expect(questionsJson[0]['options'].length, 4);
+    });
+  });
+
+  group('ItemApiService - claimItem', () {
+    test('should return claim_id and questions on 201', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.toString(), '$testBaseUrl/items/test-item-id/claim');
+        expect(request.headers['Authorization'], 'Bearer $testToken');
+
+        return http.Response(
+          jsonEncode({
+            'claim_id': 'claim-uuid-123',
+            'item_id': 'test-item-id',
+            'status': 'PENDING',
+            'questions': [
+              {
+                'id': 'q1-uuid',
+                'question': 'What color?',
+                'options': ['Red', 'Blue', 'Black', 'Green'],
+              },
+            ],
+          }),
+          201,
+        );
+      });
+
+      final response = await mockClient.post(
+        Uri.parse('$testBaseUrl/items/test-item-id/claim'),
+        headers: {
+          'Authorization': 'Bearer $testToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      expect(response.statusCode, 201);
+
+      final data = json.decode(response.body);
+      expect(data['claim_id'], 'claim-uuid-123');
+      expect(data['questions'].length, 1);
+      expect(data['questions'][0]['id'], 'q1-uuid');
+    });
+
+    test('should handle conflict when item not available', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({'error': 'item is not available for claiming'}),
+          409,
+        );
+      });
+
+      final response = await mockClient.post(
+        Uri.parse('$testBaseUrl/items/test-item-id/claim'),
+        headers: {'Authorization': 'Bearer $testToken'},
+      );
+
+      expect(response.statusCode, 409);
+    });
+  });
+
+  group('ItemApiService - submitClaimAnswers', () {
+    test('should return confidence and status on 200', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.toString(), '$testBaseUrl/claims/claim-123/submit');
+
+        final body = json.decode(request.body);
+        expect(body['answers'], isA<List>());
+        expect(body['answers'].length, 2);
+
+        return http.Response(
+          jsonEncode({
+            'claim_id': 'claim-123',
+            'confidence_score': 85,
+            'status': 'APPROVED',
+            'message': 'Claim approved!',
+          }),
+          200,
+        );
+      });
+
+      final answers = [
+        {'question_id': 'q1', 'answer': 'A'},
+        {'question_id': 'q2', 'answer': 'C'},
+      ];
+
+      final response = await mockClient.post(
+        Uri.parse('$testBaseUrl/claims/claim-123/submit'),
+        headers: {
+          'Authorization': 'Bearer $testToken',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'answers': answers}),
+      );
+
+      expect(response.statusCode, 200);
+
+      final data = json.decode(response.body);
+      expect(data['confidence_score'], 85);
+      expect(data['status'], 'APPROVED');
+      expect(data['message'], isNotEmpty);
+    });
+  });
+
   group('ItemApiService - constructor', () {
     test('should accept baseUrl and getToken', () {
       final service = ItemApiService(

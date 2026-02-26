@@ -1,9 +1,10 @@
-import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/item_dto.dart';
 import '../services/item_api_service.dart';
+import '../widgets/particle_background.dart';
 import 'my_reports_screen.dart';
+import 'verification_questions_screen.dart';
 
 class BlindFeedScreen extends StatefulWidget {
   final ItemApiService? apiService;
@@ -72,7 +73,7 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
       ),
       body: Stack(
         children: [
-          const Positioned.fill(child: _EnhancedParticleBackground()),
+          const Positioned.fill(child: ParticleBackground()),
           SafeArea(
             child: Column(
               children: [
@@ -276,6 +277,7 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                         itemBuilder: (context, index) => _BlindItemCard(
                           item: items[index],
                           accent: accentColor,
+                          apiService: widget.apiService,
                         ),
                       );
                     },
@@ -295,8 +297,10 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
 class _BlindItemCard extends StatefulWidget {
   final ItemDto item;
   final Color accent;
+  final ItemApiService? apiService;
 
-  const _BlindItemCard({required this.item, required this.accent});
+  const _BlindItemCard(
+      {required this.item, required this.accent, this.apiService});
 
   @override
   State<_BlindItemCard> createState() => _BlindItemCardState();
@@ -431,7 +435,18 @@ class _BlindItemCardState extends State<_BlindItemCard> {
                     child: ElevatedButton(
                       onPressed: isAvailable
                           ? () {
-                              // Action for claiming
+                              if (widget.apiService != null) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        VerificationQuestionsScreen(
+                                      itemId: widget.item.id,
+                                      apiService: widget.apiService!,
+                                    ),
+                                  ),
+                                );
+                              }
                             }
                           : null, // Disables button when null
                       style: ElevatedButton.styleFrom(
@@ -463,96 +478,7 @@ class _BlindItemCardState extends State<_BlindItemCard> {
 }
 
 /* ───────────────── ENHANCED BACKGROUND ───────────────── */
-
-class _EnhancedParticleBackground extends StatefulWidget {
-  const _EnhancedParticleBackground();
-
-  @override
-  State<_EnhancedParticleBackground> createState() =>
-      _EnhancedParticleBackgroundState();
-}
-
-class _EnhancedParticleBackgroundState
-    extends State<_EnhancedParticleBackground>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  // 4. MORE PARTICLES
-  final List<_Particle> particles = List.generate(65, (index) => _Particle());
-
-  @override
-  void initState() {
-    super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 15))
-          ..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return CustomPaint(painter: _GridPainter(particles, _controller.value));
-      },
-    );
-  }
-}
-
-class _GridPainter extends CustomPainter {
-  final List<_Particle> particles;
-  final double progress;
-
-  _GridPainter(this.particles, this.progress);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // 1. HIGHER OPACITY GRIDS
-    final gridPaint = Paint()
-      ..color = const Color(0xFF9CFF00)
-          .withValues(alpha: 0.15) // Increased visibility
-      ..strokeWidth = 1.0;
-
-    const double step = 50; // Larger grid size
-    for (double i = 0; i < size.width; i += step) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), gridPaint);
-    }
-    for (double i = 0; i < size.height; i += step) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), gridPaint);
-    }
-
-    // 4. MOVING PARTICLES
-    for (var p in particles) {
-      final double movingY =
-          (p.y * size.height - (progress * size.height * p.speed)) %
-              size.height;
-      final double movingX =
-          (p.x * size.width + (sin(progress * 10 * p.speed) * 20)) % size.width;
-
-      final opacity = (sin(progress * 6.28 + p.randomSeed) + 1) / 2;
-      final particlePaint = Paint()
-        ..color = const Color(0xFF9CFF00).withValues(alpha: opacity * 0.4);
-
-      canvas.drawCircle(Offset(movingX, movingY), p.size, particlePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-class _Particle {
-  double x = Random().nextDouble();
-  double y = Random().nextDouble();
-  double size = Random().nextDouble() * 4 + 1.5;
-  double speed = Random().nextDouble() * 0.4 + 0.2;
-  double randomSeed = Random().nextDouble() * 100;
-}
+// Particle background extracted to widgets/particle_background.dart
 
 /* ───────────────── SEARCH BAR ───────────────── */
 
