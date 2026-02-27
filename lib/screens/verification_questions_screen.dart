@@ -40,6 +40,7 @@ class _VerificationQuestionsScreenState
   }
 
   /// Creates a claim and loads questions with IDs from the backend.
+  /// If claim was already submitted, shows the previous result.
   Future<void> _initClaim() async {
     try {
       final result = await widget.apiService.claimItem(widget.itemId);
@@ -63,11 +64,78 @@ class _VerificationQuestionsScreenState
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-        _isLoading = false;
-      });
+      final errorMsg = e.toString().replaceFirst('Exception: ', '');
+
+      // Check if this is an "already submitted" error
+      if (errorMsg.contains('already submitted')) {
+        setState(() => _isLoading = false);
+        // Show a message that this item has already been claimed
+        if (mounted) {
+          _showAlreadyClaimedDialog();
+        }
+      } else {
+        setState(() {
+          _error = errorMsg;
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  void _showAlreadyClaimedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: AlertDialog(
+          backgroundColor: Colors.black.withValues(alpha: 0.85),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+            side: const BorderSide(color: Colors.orangeAccent, width: 2),
+          ),
+          title: const Column(
+            children: [
+              Icon(Icons.info_outline, color: Colors.orangeAccent, size: 56),
+              SizedBox(height: 12),
+              Text(
+                'ALREADY CLAIMED',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.orangeAccent,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 20,
+                  letterSpacing: 2,
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'You have already submitted a claim for this item. Each user gets only one attempt per item.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
+          ),
+          actions: [
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).pop();
+                },
+                child: const Text(
+                  'GO BACK',
+                  style: TextStyle(
+                    color: Colors.orangeAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   bool get _allAnswered => _selectedAnswers.length == _questions.length;
