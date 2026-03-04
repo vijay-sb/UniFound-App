@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/item_dto.dart';
+import '../models/question_model.dart';
 
 class ItemApiService {
   final String baseUrl;
@@ -82,17 +83,16 @@ class ItemApiService {
     return decoded["image_key"]; // this is the UploadThing URL
   }
 
-  // Inside services/item_api_service.dart
+  /* ───────────── MY REPORTED ITEMS ───────────── */
 
   Future<List<ItemDto>> fetchMyReportedItems() async {
-    // Assuming you store your JWT in SharedPreferences or a SecureStore
     final String? token = await getToken();
 
     final response = await http.get(
       Uri.parse('$baseUrl/items/my'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token', // The Go middleware needs this!
+        'Authorization': 'Bearer $token',
       },
     );
 
@@ -100,57 +100,80 @@ class ItemApiService {
       final List<dynamic> jsonData = jsonDecode(response.body);
       return jsonData.map((item) => ItemDto.fromJson(item)).toList();
     } else if (response.statusCode == 401) {
-      // Handle unauthorized - maybe trigger logout
       throw Exception("Unauthorized: Please login again.");
     } else {
       throw Exception("Server error while fetching your reports.");
     }
   }
 
-  /* ───────────── GET UPLOAD URL ───────────── */
+  /* ───────────── VERIFICATION QUESTIONS ───────────── */
 
-  // Future<Map<String, dynamic>> getUploadUrl() async {
-  //   final token = await getToken();
+  /// Fetch the verification questions for an AVAILABLE item (no answers leaked).
+  Future<List<QuestionModel>> fetchItemQuestions(String itemId) async {
+    final token = await getToken();
 
-  //   if (token == null) {
-  //     throw Exception("User not authenticated");
-  //   }
+    final response = await http.get(
+      Uri.parse('$baseUrl/items/$itemId/questions'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-  //   final res = await http.post(
-  //     Uri.parse('$baseUrl/api/uploads/found-item'),
-  //     headers: {
-  //       'Authorization': 'Bearer $token',
-  //     },
-  //   );
+    if (response.statusCode != 200) {
+      final errorData = json.decode(response.body);
+      throw Exception(errorData['error'] ?? 'Failed to load questions');
+    }
 
-  //   if (res.statusCode != 200) {
-  //     throw Exception("Failed to get upload url");
-  //   }
+    final data = json.decode(response.body);
+    final List questionsJson = data['questions'];
+    return questionsJson.map((e) => QuestionModel.fromJson(e)).toList();
+  }
 
-  //   return json.decode(res.body);
-  // }
+  /* ───────────── CLAIM ITEM ───────────── */
 
-  /* ───────────── MINIO UPLOAD (CRITICAL) ───────────── */
+  /// Create a claim for the item. Returns claim_id and questions with IDs.
+  Future<Map<String, dynamic>> claimItem(String itemId) async {
+    final token = await getToken();
 
-// ...existing code...
-// ...existing code...
-// ...existing code...
-  // Future<void> uploadImageToMinio(String uploadUrl, Uint8List bytes) async {
-  //   // Use the exact presigned URL returned by the backend (do NOT change host)
-  //   final uri = Uri.parse(uploadUrl);
+    final response = await http.post(
+      Uri.parse('$baseUrl/items/$itemId/claim'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
 
-  //   // IMPORTANT: do not add headers that weren't part of the signature.
-  //   final response = await http.put(uri, body: bytes);
+    if (response.statusCode != 201) {
+      final errorData = json.decode(response.body);
+      throw Exception(errorData['error'] ?? 'Failed to create claim');
+    }
 
-  //   if (response.statusCode != 200 && response.statusCode != 204) {
-  //     throw Exception(
-  //       "Image upload failed (${response.statusCode}): ${response.body}",
-  //     );
-  //   }
-  // }
-// ...existing code...
-// ...existing code...
-// ...existing code...
+    return json.decode(response.body);
+  }
 
-  /* ───────────── HOSTNAME FIX ───────────── */
+  /* ───────────── SUBMIT CLAIM ANSWERS ───────────── */
+
+  /// Submit answers for a claim. Returns confidence_score, status, and message.
+  Future<Map<String, dynamic>> submitClaimAnswers(
+    String claimId,
+    List<Map<String, String>> answers,
+  ) async {
+    final token = await getToken();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/claims/$claimId/submit'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'answers': answers}),
+    );
+
+    if (response.statusCode != 200) {
+      final errorData = json.decode(response.body);
+      throw Exception(errorData['error'] ?? 'Failed to submit answers');
+    }
+
+    return json.decode(response.body);
+  }
 }

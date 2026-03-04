@@ -102,12 +102,11 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
     // ];
 
     final List<mp.LatLng> campusPolygon = [
-      mp.LatLng(10.912112946556391, 76.88979321694296), // Top-Left
-      mp.LatLng(10.88338758551069, 76.88979321694296), // Bottom-Left
-      mp.LatLng(10.88338758551069, 76.9157334428773), // Bottom-Right
-      mp.LatLng(10.912112946556391, 76.9157334428773), // Top-Right
-      mp.LatLng(10.912112946556391,
-          76.88979321694296), // Closing point (same as first)
+      mp.LatLng(10.920000, 76.88900), // Top-Left
+      mp.LatLng(10.880000, 76.88900), // Bottom-Left
+      mp.LatLng(10.880000, 76.95500), // Bottom-Right
+      mp.LatLng(10.920000, 76.95500), // Top-Right
+      mp.LatLng(10.920000, 76.88900), // Closing point (same as first)
     ];
 
     return mp.PolygonUtil.containsLocation(
