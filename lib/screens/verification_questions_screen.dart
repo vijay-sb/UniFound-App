@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../models/question_model.dart';
 import '../services/item_api_service.dart';
 import '../widgets/particle_background.dart';
@@ -165,6 +167,8 @@ class _VerificationQuestionsScreenState
         status: result['status'] as String,
         message: result['message'] as String,
         confidence: result['confidence_score'] as int,
+        pickupLocation: result['pickup_location'] as String? ?? '',
+        pickupTokenId: result['pickup_token_id'] as String?,
       );
     } catch (e) {
       if (!mounted) return;
@@ -183,6 +187,8 @@ class _VerificationQuestionsScreenState
     required String status,
     required String message,
     required int confidence,
+    required String pickupLocation,
+    String? pickupTokenId,
   }) {
     IconData icon;
     Color iconColor;
@@ -208,79 +214,238 @@ class _VerificationQuestionsScreenState
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: AlertDialog(
-          backgroundColor: Colors.black.withValues(alpha: 0.85),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-            side: BorderSide(color: iconColor, width: 2),
-          ),
-          title: Column(
-            children: [
-              Icon(icon, color: iconColor, size: 56),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: iconColor,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 20,
-                  letterSpacing: 2,
-                ),
+      builder: (ctx) {
+        // Use MediaQuery for responsive sizing
+        final screenSize = MediaQuery.of(ctx).size;
+        // Dynamically calculate QR size based on viewport width
+        final double qrSize = (screenSize.width * 0.45).clamp(120.0, 200.0);
+
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Dialog(
+            backgroundColor: Colors.black.withValues(alpha: 0.85),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+              side: BorderSide(color: iconColor, width: 2),
+            ),
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: ConstrainedBox(
+              // Allow it to grow up to 80% screen height, making it smoothly scroll instead of overflowing
+              constraints: BoxConstraints(
+                maxHeight: screenSize.height * 0.85,
+                maxWidth: 400,
               ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 14, height: 1.5),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: iconColor.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  'Confidence: $confidence%',
-                  style: TextStyle(
-                    color: iconColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            Center(
-              child: TextButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).pop(); // Back to BlindFeedScreen
-                },
-                child: Text(
-                  'DONE',
-                  style: TextStyle(
-                    color: iconColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: iconColor, size: 56),
+                    const SizedBox(height: 12),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: iconColor,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 20,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 14, height: 1.5),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Confidence score badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: iconColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: iconColor.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        'Confidence: $confidence%',
+                        style: TextStyle(
+                          color: iconColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+
+                    // Pickup Location
+                    if ((status == 'APPROVED' || status == 'MANUAL_REVIEW') &&
+                        pickupLocation.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.location_on, color: iconColor, size: 22),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    status == 'APPROVED'
+                                        ? 'PICKUP LOCATION'
+                                        : 'COLLECTION POINT (ONCE APPROVED)',
+                                    style: TextStyle(
+                                      color: iconColor,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    pickupLocation,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // QR Code
+                    if (status == 'APPROVED' && pickupTokenId != null) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: QrImageView(
+                          data: pickupTokenId,
+                          version: QrVersions.auto,
+                          size: qrSize,
+                          backgroundColor: Colors.white,
+                          eyeStyle: const QrEyeStyle(
+                            eyeShape: QrEyeShape.square,
+                            color: Colors.black,
+                          ),
+                          dataModuleStyle: const QrDataModuleStyle(
+                            dataModuleShape: QrDataModuleShape.square,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Show this QR code to the admin for pickup',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: _accent.withValues(alpha: 0.8),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Copy token ID button
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: pickupTokenId));
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(
+                              content: Text('Token ID copied to clipboard'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.copy,
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  size: 16),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Copy Token ID',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 28),
+                    // Action Buttons inside the scrollable column to prevent overlap
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          Navigator.of(context)
+                              .pop(); // Back to BlindFeedScreen
+                        },
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: iconColor.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          backgroundColor: iconColor.withValues(alpha: 0.05),
+                        ),
+                        child: Text(
+                          'DONE',
+                          style: TextStyle(
+                            color: iconColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
