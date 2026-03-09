@@ -352,7 +352,7 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
 
           style: const TextStyle(color: Colors.white),
           // 3. REMOVED initialValue to show hint by default
-          value: _selectedCategory,
+          initialValue: _selectedCategory,
           hint: const Text("Select Category",
               style: TextStyle(color: Colors.white24, fontSize: 14)),
 
@@ -438,7 +438,7 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
           initialValue: value,
           items: items.map((String item) {
             return DropdownMenuItem<String>(
-              initialValue: item,
+              value: item,
               child: Text(
                 item,
                 style: TextStyle(
