@@ -435,10 +435,10 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
           iconEnabledColor: accentColor,
           hint: Text(hint,
               style: const TextStyle(color: Colors.white24, fontSize: 14)),
-          value: value,
+          initialValue: value,
           items: items.map((String item) {
             return DropdownMenuItem<String>(
-              value: item,
+              initialValue: item,
               child: Text(
                 item,
                 style: TextStyle(
