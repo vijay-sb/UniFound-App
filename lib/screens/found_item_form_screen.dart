@@ -84,42 +84,49 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
     }
 
     Position position = await Geolocator.getCurrentPosition();
+    mp.LatLng currentLatLng = mp.LatLng(position.latitude, position.longitude);
+
     debugPrint(
         "DEBUG: Your current Lat: ${position.latitude}, Lng: ${position.longitude}");
 
-    // RECTIFIED: Centered on your actual reported coordinates
-    // final List<mp.LatLng> campusPolygon = [
-    //   mp.LatLng(10.896635238632442, 76.90052261537556),
-    //   mp.LatLng(10.898029030766779, 76.89255827603017),
-    //   mp.LatLng(10.903991290080896, 76.89038976779261),
-    //   mp.LatLng(10.909759855786632, 76.8936228164381),
-    //   mp.LatLng(10.912315023616713, 76.90154772836053),
-    //   mp.LatLng(10.91177302015467, 76.90600302710453),
-    //   mp.LatLng(10.905810916850072, 76.90797439822961),
-    //   mp.LatLng(10.899384100193032, 76.90927550317173),
-    //   mp.LatLng(10.896557805544973, 76.9046624947394),
-    //   mp.LatLng(10.896596522091784, 76.90040433310793), // Closing point
-    // ];
+    // (1) Coimbatore Campus (Ettimadai)
+    final List<mp.LatLng> polygon1 = [
+      mp.LatLng(10.896635238632442, 76.90052261537556),
+      mp.LatLng(10.898029030766779, 76.89255827603017),
+      mp.LatLng(10.903991290080896, 76.89038976779261),
+      mp.LatLng(10.909759855786632, 76.8936228164381),
+      mp.LatLng(10.912315023616713, 76.90154772836053),
+      mp.LatLng(10.91177302015467, 76.90600302710453),
+      mp.LatLng(10.905810916850072, 76.90797439822961),
+      mp.LatLng(10.899384100193032, 76.90927550317173),
+      mp.LatLng(10.896557805544973, 76.9046624947394),
+      mp.LatLng(10.896596522091784, 76.90040433310793), // Closing point
+    ];
 
-    // Temporary: South Korea emulator default location (37.5682, 126.9977)
-    final List<mp.LatLng> campusPolygon = [
+    // (2) Extended Campus Boundary
+    final List<mp.LatLng> polygon2 = [
       mp.LatLng(10.920000, 76.88900), // Top-Left
       mp.LatLng(10.880000, 76.88900), // Bottom-Left
       mp.LatLng(10.880000, 76.95500), // Bottom-Right
       mp.LatLng(10.920000, 76.95500), // Top-Right
-      mp.LatLng(10.920000, 76.88900), // Closing point (same as first)
-      // mp.LatLng(37.600000, 126.980000), // Top-Left
-      // mp.LatLng(37.540000, 126.980000), // Bottom-Left
-      // mp.LatLng(37.540000, 127.020000), // Bottom-Right
-      // mp.LatLng(37.600000, 127.020000), // Top-Right
-      // mp.LatLng(37.600000, 126.980000), // Closing point
+      mp.LatLng(10.920000, 76.88900), // Closing point
     ];
 
-    return mp.PolygonUtil.containsLocation(
-      mp.LatLng(position.latitude, position.longitude),
-      campusPolygon,
-      false,
-    );
+    // (3) South Korea Emulator Location
+    final List<mp.LatLng> polygon3 = [
+      mp.LatLng(37.600000, 126.980000), // Top-Left
+      mp.LatLng(37.540000, 126.980000), // Bottom-Left
+      mp.LatLng(37.540000, 127.020000), // Bottom-Right
+      mp.LatLng(37.600000, 127.020000), // Top-Right
+      mp.LatLng(37.600000, 126.980000), // Closing point
+    ];
+
+    bool isInside =
+        mp.PolygonUtil.containsLocation(currentLatLng, polygon1, false) ||
+            mp.PolygonUtil.containsLocation(currentLatLng, polygon2, false) ||
+            mp.PolygonUtil.containsLocation(currentLatLng, polygon3, false);
+
+    return isInside;
   }
 
   Future<void> _pickImage(ImageSource source) async {
