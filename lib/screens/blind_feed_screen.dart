@@ -4,6 +4,7 @@ import '../models/item_dto.dart';
 import '../services/item_api_service.dart';
 import '../widgets/particle_background.dart';
 import 'my_reports_screen.dart';
+import 'my_claims_screen.dart';
 import 'verification_questions_screen.dart';
 
 class BlindFeedScreen extends StatefulWidget {
@@ -111,6 +112,15 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                                 ),
                               ),
                             );
+                          } else if (value == 'claims') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MyClaimsScreen(
+                                  apiService: widget.apiService!,
+                                ),
+                              ),
+                            );
                           } else if (value == 'logout') {
                             final confirmed = await showDialog<bool>(
                               context: context,
@@ -161,6 +171,15 @@ class _BlindFeedScreenState extends State<BlindFeedScreen> {
                               Icon(Icons.history, color: accentColor),
                               const SizedBox(width: 8),
                               const Text('My Reports',
+                                  style: TextStyle(color: Colors.white))
+                            ]),
+                          ),
+                          PopupMenuItem(
+                            value: 'claims',
+                            child: Row(children: [
+                              Icon(Icons.assignment_rounded, color: accentColor),
+                              const SizedBox(width: 8),
+                              const Text('My Claims',
                                   style: TextStyle(color: Colors.white))
                             ]),
                           ),

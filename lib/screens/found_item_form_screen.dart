@@ -103,16 +103,16 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
 
     // Temporary: South Korea emulator default location (37.5682, 126.9977)
     final List<mp.LatLng> campusPolygon = [
-      // mp.LatLng(10.920000, 76.88900), // Top-Left
-      // mp.LatLng(10.880000, 76.88900), // Bottom-Left
-      // mp.LatLng(10.880000, 76.95500), // Bottom-Right
-      // mp.LatLng(10.920000, 76.95500), // Top-Right
-      // mp.LatLng(10.920000, 76.88900), // Closing point (same as first)
-      mp.LatLng(37.600000, 126.980000), // Top-Left
-      mp.LatLng(37.540000, 126.980000), // Bottom-Left
-      mp.LatLng(37.540000, 127.020000), // Bottom-Right
-      mp.LatLng(37.600000, 127.020000), // Top-Right
-      mp.LatLng(37.600000, 126.980000), // Closing point
+      mp.LatLng(10.920000, 76.88900), // Top-Left
+      mp.LatLng(10.880000, 76.88900), // Bottom-Left
+      mp.LatLng(10.880000, 76.95500), // Bottom-Right
+      mp.LatLng(10.920000, 76.95500), // Top-Right
+      mp.LatLng(10.920000, 76.88900), // Closing point (same as first)
+      // mp.LatLng(37.600000, 126.980000), // Top-Left
+      // mp.LatLng(37.540000, 126.980000), // Bottom-Left
+      // mp.LatLng(37.540000, 127.020000), // Bottom-Right
+      // mp.LatLng(37.600000, 127.020000), // Top-Right
+      // mp.LatLng(37.600000, 126.980000), // Closing point
     ];
 
     return mp.PolygonUtil.containsLocation(

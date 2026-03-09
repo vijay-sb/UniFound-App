@@ -191,24 +191,42 @@ class _ReportItemCardState extends State<_ReportItemCard> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Status tag specifically for reported items
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blueAccent, width: 1),
-                    ),
-                    child: const Text(
-                      'REPORTED',
-                      style: TextStyle(
-                        color: Colors.blueAccent,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                  // Dynamic status badge from backend
+                  Builder(builder: (_) {
+                    Color badgeColor;
+                    switch (widget.item.status) {
+                      case 'UNVERIFIED':
+                        badgeColor = Colors.orange;
+                        break;
+                      case 'VERIFIED':
+                        badgeColor = Colors.blueAccent;
+                        break;
+                      case 'AVAILABLE':
+                        badgeColor = const Color(0xFF4ADE80);
+                        break;
+                      case 'CLAIMED':
+                        badgeColor = const Color(0xFF2DD4BF);
+                        break;
+                      default:
+                        badgeColor = Colors.grey;
+                    }
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: badgeColor, width: 1),
                       ),
-                    ),
-                  ),
+                      child: Text(
+                        widget.item.status,
+                        style: TextStyle(
+                          color: badgeColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }),
 
                   const SizedBox(height: 16),
                   Row(
