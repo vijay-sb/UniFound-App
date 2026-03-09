@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/item_dto.dart';
 import '../models/question_model.dart';
+import '../models/claim_dto.dart';
 
 class ItemApiService {
   final String baseUrl;
@@ -175,5 +176,25 @@ class ItemApiService {
     }
 
     return json.decode(response.body);
+  }
+
+  /* ───────────── MY CLAIMS ───────────── */
+
+  Future<List<ClaimDto>> fetchMyClaims() async {
+    final token = await getToken();
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/claims/my'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load claims');
+    }
+
+    final List data = json.decode(response.body);
+    return data.map((e) => ClaimDto.fromJson(e)).toList();
   }
 }
