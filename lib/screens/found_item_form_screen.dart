@@ -11,6 +11,7 @@ import 'package:maps_toolkit/maps_toolkit.dart' as mp;
 import '../widgets/handover_alert.dart';
 import '../services/item_api_service.dart';
 import '../services/api_service.dart';
+import '../constants.dart';
 
 class FoundItemFormScreen extends StatefulWidget {
   const FoundItemFormScreen({super.key});
@@ -538,7 +539,7 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
     // const bool inside = true;
     final bool inside = await _verifyCampusLocation();
     final itemApi = ItemApiService(
-      baseUrl: 'http://localhost:8080',
+      baseUrl: baseUrl.replaceAll('/api', ''),
       getToken: () => ApiService().getToken(),
     );
 
