@@ -41,7 +41,7 @@ class ItemApiService {
     final token = await getToken();
 
     final response = await http.post(
-      Uri.parse('$baseUrl/api/items/found'),
+      Uri.parse('$baseUrl/items/found'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ class ItemApiService {
 
     final request = http.MultipartRequest(
       "POST",
-      Uri.parse('$baseUrl/api/uploads/found-item'),
+      Uri.parse('$baseUrl/uploads/found-item'),
     );
 
     request.headers['Authorization'] = 'Bearer $token';
