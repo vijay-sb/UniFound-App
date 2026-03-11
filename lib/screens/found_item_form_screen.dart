@@ -539,7 +539,7 @@ class _FoundItemFormScreenState extends State<FoundItemFormScreen> {
     // const bool inside = true;
     final bool inside = await _verifyCampusLocation();
     final itemApi = ItemApiService(
-      baseUrl: baseUrl.replaceAll('/api', ''),
+      baseUrl: baseUrl,
       getToken: () => ApiService().getToken(),
     );
 
